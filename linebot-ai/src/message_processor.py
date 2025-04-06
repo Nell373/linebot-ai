@@ -1,90 +1,55 @@
 """
-Message processing module.
-Handles the analysis and processing of user messages.
+訊息處理模組
+處理從 LINE Bot 收到的訊息，並生成響應。
 """
-import json
 import logging
-from typing import Dict, Any, Tuple, Optional
+import re
 
-from .config import DEFAULT_RESPONSES
-from .services.ai_service import analyze_message
-from .services.storage_service import save_message_result
-
-# Configure logging
+# 獲取日誌記錄器
 logger = logging.getLogger(__name__)
 
-class MessageProcessor:
-    """Handles processing and analysis of user messages."""
+def process_message(message_text: str) -> str:
+    """
+    處理收到的訊息，並返回適當的回應。
     
-    @staticmethod
-    def process_message(text: str, user_id: str) -> Tuple[str, Optional[Dict[str, Any]]]:
-        """
-        Process a user message using AI analysis.
+    Args:
+        message_text: 使用者發送的訊息文本
         
-        Args:
-            text: The message text from the user
-            user_id: The LINE user ID
-            
-        Returns:
-            Tuple containing the reply message and the parsed result (if successful)
-        """
-        try:
-            # Analyze the message using AI
-            result = analyze_message(text)
-            
-            # Parse the result
-            parsed_result = json.loads(result)
-            
-            # Save the result to storage
-            save_message_result(user_id, parsed_result)
-            
-            # Generate reply based on message type
-            reply = MessageProcessor._generate_reply(parsed_result)
-            
-            # Log for debugging
-            logger.info(f"User: {user_id} | Input: {text} | Type: {parsed_result.get('type')}")
-            logger.debug(f"Full analysis: {result}")
-            
-            return reply, parsed_result
-            
-        except json.JSONDecodeError:
-            logger.error(f"JSON parse error for input: {text}")
-            return DEFAULT_RESPONSES['error'], None
-            
-        except Exception as e:
-            logger.error(f"Error processing message: {str(e)}", exc_info=True)
-            return DEFAULT_RESPONSES['error'], None
+    Returns:
+        回覆給使用者的訊息
+    """
+    logger.info(f"Processing message: {message_text}")
     
-    @staticmethod
-    def _generate_reply(parsed_result: Dict[str, Any]) -> str:
-        """Generate a reply message based on the parsed result."""
-        msg_type = parsed_result.get("type")
-        details = parsed_result.get("details", {})
+    # 檢查是否是午餐預算格式（例如：午餐120）
+    lunch_budget_match = re.match(r'午餐(\d+)', message_text)
+    if lunch_budget_match:
+        budget = int(lunch_budget_match.group(1))
+        return process_lunch_budget(budget)
+    
+    # 如果不匹配任何已知模式，返回默認回覆
+    return "您好！我是 LINE Bot。請輸入「午餐+金額」來計算午餐預算，例如：午餐120"
+
+def process_lunch_budget(budget: int) -> str:
+    """
+    處理午餐預算請求。
+    
+    Args:
+        budget: 午餐預算金額
         
-        if msg_type == "accounting":
-            return DEFAULT_RESPONSES['accounting'].format(
-                item=details.get('item', ''),
-                amount=details.get('amount', 0),
-                category=details.get('category', '其他')
-            )
-        
-        elif msg_type == "reminder":
-            time_info = ""
-            if details.get("date"):
-                time_info += details.get("date", "")
-            if details.get("time"):
-                time_info += f" {details.get('time', '')}"
-            
-            return DEFAULT_RESPONSES['reminder'].format(
-                time_info=time_info.strip() or "未指定時間",
-                event=details.get('event', '')
-            )
-        
-        elif msg_type == "task":
-            return DEFAULT_RESPONSES['task'].format(
-                description=details.get('description', ''),
-                priority=details.get('priority', '中')
-            )
-        
-        else:
-            return DEFAULT_RESPONSES['unknown']
+    Returns:
+        關於午餐預算的回覆
+    """
+    logger.info(f"Processing lunch budget: {budget}")
+    
+    if budget <= 0:
+        return "預算必須大於 0 元"
+    elif budget < 50:
+        return f"您的午餐預算為 {budget} 元，這可能只夠買飲料或小點心。"
+    elif budget < 100:
+        return f"您的午餐預算為 {budget} 元，可以考慮便當、麵食或簡單的餐點。"
+    elif budget < 200:
+        return f"您的午餐預算為 {budget} 元，可以選擇較好的餐廳或較豐盛的套餐。"
+    elif budget < 500:
+        return f"您的午餐預算為 {budget} 元，可以享用相當不錯的餐廳或特色料理。"
+    else:
+        return f"您的午餐預算為 {budget} 元，可以選擇高級餐廳或奢華的用餐體驗。"
