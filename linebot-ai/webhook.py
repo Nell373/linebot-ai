@@ -30,14 +30,12 @@ def home():
     logger.info("Home route accessed")
     return Response('LINE Bot is running!', status=200)
 
-@app.route("/api/webhook", methods=['GET'])
-def webhook_get():
-    logger.info("Webhook GET route accessed")
-    return Response('Webhook endpoint is active', status=200)
-
-@app.route("/api/webhook", methods=['POST'])
-def callback():
-    logger.info("Received webhook POST request")
+@app.route("/api/webhook", methods=['GET', 'POST'])
+def webhook():
+    logger.info(f"Webhook {request.method} route accessed")
+    
+    if request.method == 'GET':
+        return Response('Webhook endpoint is active', status=200)
     
     # 檢查環境變數
     channel_secret = os.environ.get('LINE_CHANNEL_SECRET')
