@@ -820,7 +820,7 @@ class FlexMessageService:
             category_buttons.append(
                 ButtonComponent(
                     style="secondary",
-                    color="#27ACB2",
+                    color="#FF6B6E",
                     action=PostbackAction(
                         label=f"{category.icon} {category.name}",
                         display_text=f"選擇類別：{category.name}",

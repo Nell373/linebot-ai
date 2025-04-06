@@ -345,13 +345,24 @@ def create_monthly_report_flex(report_data, year, month):
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     """處理 LINE 平台的訊息事件"""
-    response = process_message(event)
+    try:
+        response = process_message(event)
+        logger.info(f"處理用戶 {event.source.user_id} 的訊息，準備回應")
+        
+        # 檢查是否為 FlexSendMessage 類型
+        if isinstance(response, FlexSendMessage):
+            line_bot_api.reply_message(event.reply_token, response)
+            logger.info(f"已發送 Flex 訊息回應給用戶 {event.source.user_id}")
+        else:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+            logger.info(f"已發送文字訊息回應給用戶 {event.source.user_id}: {response[:30]}...")
     
-    # 檢查是否為 FlexSendMessage 類型
-    if isinstance(response, FlexSendMessage):
-        line_bot_api.reply_message(event.reply_token, response)
-    else:
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+    except Exception as e:
+        logger.error(f"回應訊息時發生錯誤: {str(e)}")
+        try:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="處理您的請求時發生錯誤，請稍後再試。"))
+        except:
+            logger.error("無法發送錯誤訊息")
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
@@ -365,10 +376,13 @@ def handle_postback(event):
         params = dict(urllib.parse.parse_qsl(postback_data))
         action = params.get('action')
         
+        # 處理各種 action
+        response = None
+        
         if action == 'record':
             # 記錄交易流程開始
             transaction_type = params.get('type')
-            return FlexMessageService.create_category_selection(user_id, transaction_type)
+            response = FlexMessageService.create_category_selection(user_id, transaction_type)
         
         elif action == 'category':
             # 用戶選擇了類別
@@ -382,7 +396,7 @@ def handle_postback(event):
             }
             
             # 轉到金額輸入
-            return FlexMessageService.create_amount_input(transaction_type, category)
+            response = FlexMessageService.create_amount_input(transaction_type, category)
         
         elif action == 'amount':
             # 用戶輸入完金額
@@ -398,7 +412,7 @@ def handle_postback(event):
             }
             
             # 轉到帳戶選擇
-            return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+            response = FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
         
         elif action == 'account':
             # 用戶選擇了帳戶
@@ -417,15 +431,18 @@ def handle_postback(event):
             }
             
             # 詢問備註
-            return "請輸入備註（如不需要，請輸入「無」）："
+            response = "請輸入備註（如不需要，請輸入「無」）："
         
         elif action == 'quick_expense':
             # 用戶在快速支出界面選擇了類別
             category = params.get('category')
             amount = float(params.get('amount'))
             
+            # 記錄操作
+            logger.info(f"用戶 {user_id} 執行快速支出：{category} ${amount}")
+            
             # 直接添加交易記錄
-            response = FinanceService.add_transaction(
+            add_result = FinanceService.add_transaction(
                 user_id=user_id,
                 amount=amount,
                 category_name=category,
@@ -433,9 +450,11 @@ def handle_postback(event):
                 account_name="默認",
                 is_expense=True
             )
+            logger.info(f"交易記錄結果: {add_result}")
             
             # 返回確認訊息
-            return FlexMessageService.create_confirmation("expense", category, amount, "默認", None)
+            response = FlexMessageService.create_confirmation("expense", category, amount, "默認", None)
+            logger.info(f"準備發送確認訊息給用戶 {user_id}")
         
         elif action == 'create_category':
             # 用戶選擇創建新類別
@@ -454,11 +473,12 @@ def handle_postback(event):
             )
             db.session.add(new_category)
             db.session.commit()
+            logger.info(f"為用戶 {user_id} 創建新類別: {name}")
             
             if amount:
                 # 如果是通過快速支出創建的類別，直接添加交易記錄
                 amount_float = float(amount)
-                response = FinanceService.add_transaction(
+                add_result = FinanceService.add_transaction(
                     user_id=user_id,
                     amount=amount_float,
                     category_name=name,
@@ -466,12 +486,13 @@ def handle_postback(event):
                     account_name="默認",
                     is_expense=is_expense
                 )
+                logger.info(f"交易記錄結果: {add_result}")
                 
                 # 返回確認訊息
-                return FlexMessageService.create_confirmation("expense", name, amount_float, "默認", None)
+                response = FlexMessageService.create_confirmation("expense", name, amount_float, "默認", None)
             else:
                 # 否則回到主選單
-                return FlexMessageService.create_main_menu()
+                response = FlexMessageService.create_main_menu()
         
         elif action == 'custom_category':
             # 用戶要創建自定義類別
@@ -492,7 +513,7 @@ def handle_postback(event):
             user_states[user_id] = state
             
             # 提示輸入類別名稱
-            return "請輸入新的類別名稱："
+            response = "請輸入新的類別名稱："
         
         elif action == 'new_account':
             # 用戶要創建新帳戶
@@ -515,7 +536,7 @@ def handle_postback(event):
             user_states[user_id] = state
             
             # 提示輸入帳戶名稱
-            return "請輸入新的帳戶名稱："
+            response = "請輸入新的帳戶名稱："
         
         elif action == 'skip_note':
             # 用戶跳過輸入備註
@@ -526,7 +547,7 @@ def handle_postback(event):
             
             # 添加交易記錄
             is_expense = transaction_type == 'expense'
-            response = FinanceService.add_transaction(
+            add_result = FinanceService.add_transaction(
                 user_id=user_id,
                 amount=amount,
                 category_name=category,
@@ -534,23 +555,43 @@ def handle_postback(event):
                 account_name=account,
                 is_expense=is_expense
             )
+            logger.info(f"交易記錄結果: {add_result}")
             
             # 返回確認訊息
-            return FlexMessageService.create_confirmation(transaction_type, category, amount, account, None)
+            response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, None)
         
         elif action == 'cancel':
             # 用戶取消操作
             if user_id in user_states:
                 del user_states[user_id]
             
-            return "已取消當前操作。"
+            response = "已取消當前操作。"
         
+        elif action == 'main_menu':
+            # 返回主選單
+            response = FlexMessageService.create_main_menu()
+            
         else:
-            return "未知的操作。"
+            response = "未知的操作。"
+        
+        # 發送回覆
+        if response:
+            logger.info(f"準備回覆用戶 {user_id}")
+            if isinstance(response, FlexSendMessage):
+                line_bot_api.reply_message(event.reply_token, response)
+                logger.info(f"已發送 Flex 訊息回應給用戶 {user_id}")
+            else:
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+                logger.info(f"已發送文字訊息回應給用戶 {user_id}: {response[:30]}...")
+        else:
+            logger.warning(f"沒有對用戶 {user_id} 的回應")
     
     except Exception as e:
-        logger.error(f"處理 Postback 時發生錯誤: {str(e)}")
-        return "處理您的請求時發生錯誤，請稍後再試。"
+        logger.error(f"處理 Postback 時發生錯誤: {str(e)}", exc_info=True)
+        try:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="處理您的請求時發生錯誤，請稍後再試。"))
+        except:
+            logger.error("無法發送錯誤訊息")
 
 def create_app(test_config=None):
     """創建 Flask 應用"""
