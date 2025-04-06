@@ -1,0 +1,29 @@
+{
+  "deploy": {
+    "env": {
+      "LINE_CHANNEL_SECRET": "1d260f0f95e6bc35878578a46ab05558",
+      "LINE_CHANNEL_ACCESS_TOKEN": "U06f8a7149c21cf89496712e57866d9a8",
+      "LOG_LEVEL": "INFO"
+    },
+    "requirements": [
+      "line-bot-sdk>=2.4.2",
+      "cursor-prompts>=0.1.0",
+      "python-dotenv>=1.0.0"
+    ],
+    "python_version": "3.9",
+    "memory": "256MB",
+    "timeout": "30s",
+    "provider": "vercel",
+    "region": "ap-northeast-1",
+    "runtime": "python3.9",
+    "environment": "production",
+    "auto_deploy": true
+  },
+  "endpoints": [
+    {
+      "path": "/api/webhook",
+      "handler": "webhook.handler",
+      "methods": ["POST"]
+    }
+  ]
+}
