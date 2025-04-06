@@ -816,8 +816,7 @@ def handle_postback(event):
         
         elif action == 'task_menu':
             # 顯示任務管理選單
-            # 這裡可以根據需要添加任務管理的功能
-            response = "任務管理功能即將推出，敬請期待！"
+            response = FlexMessageService.create_task_menu(user_id)
         
         elif action == 'main_menu':
             # 返回主選單

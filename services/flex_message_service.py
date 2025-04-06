@@ -13,17 +13,23 @@ Flex Message服務模組
 ⬜ 邊框用灰：#D9D9D9 - 輸入框、卡片、表格邊線、分隔線
 """
 import logging
+import os
 from datetime import datetime, timedelta
 from linebot.models import (
     FlexSendMessage, BubbleContainer, BoxComponent,
     TextComponent, ButtonComponent, IconComponent,
     PostbackAction, MessageAction, SeparatorComponent,
-    CarouselContainer, QuickReply, QuickReplyButton
+    CarouselContainer, QuickReply, QuickReplyButton,
+    URIAction
 )
 from models import Category, Account
 import urllib.parse
 
 logger = logging.getLogger(__name__)
+
+# 從環境變數獲取 LIFF_ID
+LIFF_ID = os.environ.get('LIFF_ID', '')
+LIFF_URL = f"https://liff.line.me/{LIFF_ID}"
 
 class FlexMessageService:
     @staticmethod
@@ -67,10 +73,9 @@ class FlexMessageService:
                             ButtonComponent(
                                 style="primary",
                                 color="#FAAD14",  # 強調亮點黃
-                                action=PostbackAction(
-                                    label="任務",
-                                    display_text="任務管理",
-                                    data="action=task_menu"
+                                action=URIAction(
+                                    label="新增任務",
+                                    uri=LIFF_URL
                                 ),
                                 height="sm",
                                 margin="md",
@@ -1818,5 +1823,82 @@ class FlexMessageService:
         
         return FlexSendMessage(
             alt_text="選擇查詢時間範圍",
+            contents=bubble
+        )
+
+    @staticmethod
+    def create_task_menu(user_id):
+        """創建任務管理選單"""
+        bubble = BubbleContainer(
+            header=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFC940",
+                paddingAll="10px",
+                contents=[
+                    TextComponent(
+                        text="任務管理",
+                        color="#FFFFFF",
+                        weight="bold",
+                        size="lg",
+                        align="center"
+                    )
+                ]
+            ),
+            body=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFFBE6",
+                contents=[
+                    ButtonComponent(
+                        style="primary",
+                        color="#FAAD14",
+                        action=URIAction(
+                            label="新增任務",
+                            uri=LIFF_URL
+                        ),
+                        height="sm",
+                        margin="md"
+                    ),
+                    ButtonComponent(
+                        style="secondary",
+                        color="#FFC940",
+                        action=MessageAction(
+                            label="查看任務列表",
+                            text="任務列表"
+                        ),
+                        height="sm",
+                        margin="md"
+                    ),
+                    ButtonComponent(
+                        style="secondary",
+                        color="#FFE58F",
+                        action=MessageAction(
+                            label="查看今日提醒",
+                            text="今日提醒"
+                        ),
+                        height="sm",
+                        margin="md"
+                    )
+                ]
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFFBE6",
+                contents=[
+                    ButtonComponent(
+                        style="secondary",
+                        color="#8C8C8C",
+                        action=PostbackAction(
+                            label="返回主選單",
+                            display_text="返回主選單",
+                            data="action=main_menu"
+                        ),
+                        height="sm"
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text="任務管理選單",
             contents=bubble
         ) 
