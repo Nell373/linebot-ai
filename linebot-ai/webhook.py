@@ -25,10 +25,13 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
-@app.route("/webhook", methods=['POST'])
+@app.route("/api/webhook", methods=['POST'])
 def callback():
     # 獲取 X-Line-Signature 標頭值
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature', '')
+    if not signature:
+        logger.error("Missing X-Line-Signature header")
+        abort(400)
 
     # 獲取請求內容
     body = request.get_data(as_text=True)
@@ -39,17 +42,23 @@ def callback():
     except InvalidSignatureError:
         logger.error("Invalid signature")
         abort(400)
+    except Exception as e:
+        logger.error(f"Error handling webhook: {str(e)}", exc_info=True)
+        abort(500)
 
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     try:
+        logger.info(f"Received message: {event.message.text}")
+        
         # 從 src 目錄導入處理邏輯
         from src.message_processor import process_message
         
         # 處理訊息
         response = process_message(event.message.text)
+        logger.info(f"Generated response: {response}")
         
         # 回覆訊息
         line_bot_api.reply_message(
@@ -58,10 +67,13 @@ def handle_message(event):
         )
     except Exception as e:
         logger.error(f"Error handling message: {str(e)}", exc_info=True)
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="處理訊息時發生錯誤，請稍後再試。")
-        )
+        try:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="處理訊息時發生錯誤，請稍後再試。")
+            )
+        except Exception as reply_error:
+            logger.error(f"Error sending error message: {str(reply_error)}", exc_info=True)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
