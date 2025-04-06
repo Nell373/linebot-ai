@@ -75,7 +75,7 @@ def process_message(event):
                     return "請輸入有效的數字金額。"
         
         # 處理特殊命令
-        if message_text.lower() == 'kiwi':
+        if message_text.lower() == 'kimi':
             # 顯示 Flex 記帳選單
             return FlexMessageService.create_main_menu()
         
@@ -208,7 +208,7 @@ def get_help_text():
         "記錄收入：收入5000 薪資",
         "查詢記錄：今天 或 本週 或 本月",
         "查看統計：月報 或 月報2023-5",
-        "互動記帳：輸入 kiwi 啟動互動式記帳",
+        "互動記帳：輸入 kimi 啟動互動式記帳",
         "",
         "=== 筆記功能 ===",
         "添加筆記：筆記 標題\n內容 #標籤1 #標籤2",
