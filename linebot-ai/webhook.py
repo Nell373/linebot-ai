@@ -27,6 +27,16 @@ handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
 @app.route("/api/webhook", methods=['POST'])
 def callback():
+    logger.info("Received webhook request")
+    
+    # 檢查環境變數
+    channel_secret = os.environ.get('LINE_CHANNEL_SECRET')
+    channel_token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
+    
+    if not channel_secret or not channel_token:
+        logger.error("Missing environment variables: LINE_CHANNEL_SECRET or LINE_CHANNEL_ACCESS_TOKEN")
+        abort(500)
+    
     # 獲取 X-Line-Signature 標頭值
     signature = request.headers.get('X-Line-Signature', '')
     if not signature:
@@ -35,7 +45,7 @@ def callback():
 
     # 獲取請求內容
     body = request.get_data(as_text=True)
-    logger.info("Request body: " + body)
+    logger.info(f"Request body: {body}")
 
     try:
         handler.handle(body, signature)
@@ -52,6 +62,8 @@ def callback():
 def handle_message(event):
     try:
         logger.info(f"Received message: {event.message.text}")
+        logger.info(f"Event type: {event.type}")
+        logger.info(f"Message type: {event.message.type}")
         
         # 從 src 目錄導入處理邏輯
         from src.message_processor import process_message
@@ -65,6 +77,7 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=response)
         )
+        logger.info("Reply message sent successfully")
     except Exception as e:
         logger.error(f"Error handling message: {str(e)}", exc_info=True)
         try:
@@ -72,6 +85,7 @@ def handle_message(event):
                 event.reply_token,
                 TextSendMessage(text="處理訊息時發生錯誤，請稍後再試。")
             )
+            logger.info("Error message sent successfully")
         except Exception as reply_error:
             logger.error(f"Error sending error message: {str(reply_error)}", exc_info=True)
 
