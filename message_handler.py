@@ -67,7 +67,7 @@ def process_message(event):
                         note = text_note_match.group(1).strip()
                         amount_str = text_note_match.group(2).replace(',', '')
                         amount = float(amount_str)
-                        logger.info(f"用戶 {user_id} 輸入金額: {amount}，自動帶入備註: {note}")
+                        logger.info(f"用戶 {user_id} 輸入金額: {amount}，自動帶入備註: '{note}'")
                         return handle_amount_input(user_id, amount, state, note)
                     else:
                         amount = float(message_text)  # 使用 float 而不是 int 來支持小數金額
@@ -171,6 +171,7 @@ def handle_note_input(user_id, note, state):
     
     # 添加交易記錄
     is_expense = transaction_type == 'expense'
+    logger.info(f"添加交易記錄: 用戶:{user_id}, 類型:{transaction_type}, 類別:{category}, 金額:{amount}, 帳戶:{account}, 備註:{note}")
     response = FinanceService.add_transaction(
         user_id=user_id,
         amount=amount,
@@ -447,6 +448,18 @@ def handle_postback(event):
         params = dict(urllib.parse.parse_qsl(postback_data))
         action = params.get('action')
         
+        # 檢查 note 參數是否需要 URL 解碼
+        if 'note' in params:
+            note = params.get('note')
+            try:
+                # 嘗試 URL 解碼
+                decoded_note = urllib.parse.unquote(note)
+                if decoded_note != note:
+                    logger.info(f"備註已解碼: '{note}' -> '{decoded_note}'")
+                    params['note'] = decoded_note
+            except Exception as e:
+                logger.error(f"備註解碼錯誤: {str(e)}")
+        
         # 處理各種 action
         response = None
         
@@ -494,6 +507,9 @@ def handle_postback(event):
             account = params.get('account')
             note = params.get('note')  # 檢查是否已經有備註
             
+            # 記錄所有參數，確保數據完整
+            logger.info(f"處理 account 動作: type={transaction_type}, category={category}, amount={amount}, account={account}, note={note}")
+            
             # 如果已經有備註，直接記錄交易
             if note:
                 # 添加交易記錄
@@ -506,7 +522,7 @@ def handle_postback(event):
                     account_name=account,
                     is_expense=is_expense
                 )
-                logger.info(f"交易記錄結果: {add_result}")
+                logger.info(f"使用預設備註的交易記錄結果: {add_result}")
                 
                 # 返回確認訊息
                 response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, note)
@@ -529,8 +545,8 @@ def handle_postback(event):
             amount = float(params.get('amount'))
             note = params.get('note')  # 獲取備註，可能為None
             
-            # 記錄操作
-            logger.info(f"用戶 {user_id} 執行快速支出：{category} ${amount} 備註:{note}")
+            # 記錄完整操作參數
+            logger.info(f"用戶 {user_id} 執行快速支出：category={category}, amount=${amount}, note='{note}'")
             
             # 直接添加交易記錄
             add_result = FinanceService.add_transaction(
@@ -541,7 +557,7 @@ def handle_postback(event):
                 account_name="默認",
                 is_expense=True
             )
-            logger.info(f"交易記錄結果: {add_result}")
+            logger.info(f"快速支出交易記錄結果: {add_result}")
             
             # 返回確認訊息
             response = FlexMessageService.create_confirmation("expense", category, amount, "默認", note)

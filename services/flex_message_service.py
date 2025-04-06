@@ -11,6 +11,7 @@ from linebot.models import (
     CarouselContainer, QuickReply, QuickReplyButton
 )
 from models import Category, Account
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
@@ -324,7 +325,10 @@ class FlexMessageService:
             # 構建 postback 數據，如果有備註則包含
             postback_data = f"action=account&type={transaction_type}&category={category}&amount={amount}&account={account.name}"
             if note:
-                postback_data += f"&note={note}"
+                # 對備註進行URL編碼，避免特殊字符造成問題
+                encoded_note = urllib.parse.quote(note)
+                postback_data += f"&note={encoded_note}"
+                logger.info(f"帳戶選擇中備註已URL編碼: '{note}' -> '{encoded_note}'")
                 
             account_buttons.append(
                 ButtonComponent(
@@ -834,7 +838,10 @@ class FlexMessageService:
             # 創建Postback數據，如果有備註則包含
             postback_data = f"action=quick_expense&amount={amount}&category={category.name}"
             if note:
-                postback_data += f"&note={note}"
+                # 對備註進行URL編碼，避免特殊字符造成問題
+                encoded_note = urllib.parse.quote(note)
+                postback_data += f"&note={encoded_note}"
+                logger.info(f"備註已URL編碼: '{note}' -> '{encoded_note}'")
                 
             category_buttons.append(
                 ButtonComponent(

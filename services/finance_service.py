@@ -128,6 +128,16 @@ class FinanceService:
             # Fly.io 服務可能已經在日本或台灣區域，會有時區影響
             utc_now = datetime.utcnow()
             
+            # 記錄 note 的處理過程，確保它被正確儲存
+            if note == "無" or note == "无":
+                note = None  # 如果用戶輸入「無」，則將備註設為空
+                
+            if note:
+                logger.info(f"處理備註文字: '{note}', 長度: {len(note)}")
+                if len(note) > 200:  # 如果備註太長，截取前200個字符
+                    note = note[:200]
+                    logger.info(f"備註過長，已截斷至: '{note}'")
+                    
             # 創建交易記錄
             transaction = Transaction(
                 user_id=user_id,
@@ -140,6 +150,7 @@ class FinanceService:
             )
             
             db.session.add(transaction)
+            logger.info(f"交易記錄已添加: ID={transaction.id}, 備註={transaction.note}")
             
             # 更新賬戶餘額
             if is_expense:
@@ -148,6 +159,7 @@ class FinanceService:
                 account.balance += amount
             
             db.session.commit()
+            logger.info("交易記錄已成功提交到數據庫")
             
             transaction_type = "支出" if is_expense else "收入"
             response = f"已記錄{transaction_type}：{category.icon} {category.name} ${amount}"
