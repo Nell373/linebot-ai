@@ -8,8 +8,22 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/webhook.py"
+      "src": "/api/webhook",
+      "methods": ["POST"],
+      "dest": "webhook.py"
+    },
+    {
+      "src": "/api/webhook",
+      "methods": ["GET"],
+      "dest": "webhook.py"
+    },
+    {
+      "src": "/",
+      "methods": ["GET"],
+      "dest": "webhook.py"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONPATH": "."
+  }
 } 

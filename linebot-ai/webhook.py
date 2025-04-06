@@ -5,6 +5,7 @@ Main entry point for processing LINE webhook requests.
 import json
 import logging
 import os
+import sys
 from typing import Dict, Any
 from flask import Flask, request, abort, Response
 from linebot import LineBotApi, WebhookHandler
@@ -21,25 +22,36 @@ logger = logging.getLogger(__name__)
 # 初始化 Flask 應用
 app = Flask(__name__)
 
+# 檢查環境變數
+def check_env_vars():
+    required_vars = ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    if missing_vars:
+        logger.error(f"Missing environment variables: {', '.join(missing_vars)}")
+        return False
+    return True
+
 # 初始化 LINE Bot API
+if not check_env_vars():
+    logger.error("Failed to initialize LINE Bot API due to missing environment variables")
+    sys.exit(1)
+
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
 @app.route("/", methods=['GET'])
-@app.route("/api/webhook", methods=['GET', 'POST'])
-def webhook():
-    logger.info(f"Route accessed: {request.path} with method: {request.method}")
-    
-    if request.method == 'GET':
-        return Response('LINE Bot is running!', status=200)
-    
-    # 檢查環境變數
-    channel_secret = os.environ.get('LINE_CHANNEL_SECRET')
-    channel_token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
-    
-    if not channel_secret or not channel_token:
-        logger.error("Missing environment variables: LINE_CHANNEL_SECRET or LINE_CHANNEL_ACCESS_TOKEN")
-        abort(500)
+def home():
+    logger.info("Home route accessed")
+    return Response('LINE Bot is running!', status=200)
+
+@app.route("/api/webhook", methods=['GET'])
+def webhook_get():
+    logger.info("Webhook GET route accessed")
+    return Response('Webhook endpoint is active', status=200)
+
+@app.route("/api/webhook", methods=['POST'])
+def webhook_post():
+    logger.info("Webhook POST route accessed")
     
     # 獲取 X-Line-Signature 標頭值
     signature = request.headers.get('X-Line-Signature', '')
