@@ -16,6 +16,7 @@ from linebot.models import (
 )
 from datetime import datetime, timedelta
 import re
+import json
 
 # 導入服務模組
 from services.finance_service import FinanceService
@@ -41,6 +42,15 @@ def process_message(event):
         user_id = event.source.user_id
         message_text = event.message.text
         logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
+        
+        # 檢查是否為 JSON 格式（可能是從 LIFF 應用發送的任務數據）
+        if message_text.startswith('{"type":"task"') or message_text.startswith('{"type": "task"'):
+            try:
+                task_data = json.loads(message_text)
+                if task_data.get('type') == 'task':
+                    return process_task_from_liff(user_id, task_data)
+            except json.JSONDecodeError:
+                logger.warning(f"無法解析 JSON: {message_text}")
         
         # 檢查是否是快速支出命令（例如：早餐-500）
         quick_expense = FinanceService.parse_quick_expense_command(message_text)
@@ -439,6 +449,86 @@ def create_monthly_report_flex(report_data, year, month):
     )
     
     return FlexSendMessage(alt_text=f"{year}年{month}月財務報告", contents=bubble)
+
+def process_task_from_liff(user_id, task_data):
+    """處理從 LIFF 應用接收到的任務數據"""
+    try:
+        if 'data' not in task_data:
+            return "無效的任務數據格式"
+        
+        task_info = task_data['data']
+        
+        task_name = task_info.get('name', '')
+        reminder_time = task_info.get('reminderTime', '')
+        reminder_date = task_info.get('reminderDate', '')
+        repeat_cycle = task_info.get('repeatCycle', '不重複')
+        end_condition = task_info.get('endCondition', '無結束')
+        repeat_times = task_info.get('repeatTimes')
+        end_date = task_info.get('endDate')
+        add_to_checkbox_list = task_info.get('addToCheckboxList', False)
+        
+        # 格式化結束條件
+        end_condition_text = "無結束"
+        if end_condition == "重複 N 次" and repeat_times:
+            end_condition_text = f"重複 {repeat_times} 次"
+        elif end_condition == "到某日為止" and end_date:
+            end_condition_text = f"到 {end_date} 為止"
+        
+        # 保存任務到數據庫（這裡可以添加保存到你的 Task 模型的代碼）
+        from models import db, Reminder
+        
+        # 處理提醒時間字符串
+        reminder_date_time = None
+        try:
+            if reminder_date == "今天":
+                reminder_date_time = datetime.utcnow()
+            elif reminder_date == "明天":
+                reminder_date_time = datetime.utcnow() + timedelta(days=1)
+            elif reminder_date == "每週一三五":
+                # 這裡只是一個例子，實際應用中可能需要更複雜的處理
+                reminder_date_time = datetime.utcnow()
+            elif reminder_date.startswith("2"):  # 假設是 YYYY-MM-DD 格式
+                reminder_date_time = datetime.strptime(reminder_date, "%Y-%m-%d")
+            else:
+                reminder_date_time = datetime.utcnow()
+                
+            # 處理時間部分
+            if reminder_time == "早上":
+                reminder_date_time = reminder_date_time.replace(hour=9, minute=0, second=0)
+            elif reminder_time == "下午":
+                reminder_date_time = reminder_date_time.replace(hour=14, minute=0, second=0)
+            elif reminder_time == "晚上":
+                reminder_date_time = reminder_date_time.replace(hour=20, minute=0, second=0)
+            elif ":" in reminder_time:  # 自訂時間，格式如 "14:30"
+                hours, minutes = map(int, reminder_time.split(":", 1))
+                reminder_date_time = reminder_date_time.replace(hour=hours, minute=minutes, second=0)
+        except Exception as e:
+            logger.error(f"處理提醒時間出錯: {str(e)}")
+            reminder_date_time = datetime.utcnow()
+        
+        # 創建新任務
+        new_reminder = Reminder(
+            user_id=user_id,
+            content=task_name,
+            reminder_time=reminder_date_time,
+            repeat_type=repeat_cycle,
+            is_completed=False
+        )
+        
+        db.session.add(new_reminder)
+        db.session.commit()
+        
+        # 構建任務摘要
+        task_summary = f"✅ 已創建新任務\n\n📌 {task_name}\n⏰ {reminder_time}, {reminder_date}\n🔄 {repeat_cycle}\n🏁 {end_condition_text}"
+        
+        if add_to_checkbox_list:
+            task_summary += "\n\n已添加到 Check Box 清單 ☑"
+        
+        return task_summary
+        
+    except Exception as e:
+        logger.error(f"處理任務時出錯: {str(e)}")
+        return "創建任務時發生錯誤，請稍後再試。"
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
