@@ -678,23 +678,36 @@ def process_task_from_liff(user_id, task_data):
 def handle_message(event):
     """處理 LINE 平台的訊息事件"""
     try:
+        user_id = event.source.user_id
+        message_text = event.message.text
+        logger.info(f"處理訊息: {message_text} 從用戶: {user_id}")
+        
+        # 直接檢查特定命令
+        if message_text.lower() in ["kimi", "kimi flex", "kimi主選單", "主選單"]:
+            logger.info(f"用戶 {user_id} 請求顯示主選單")
+            flex_message = FlexMessageService.create_main_menu()
+            line_bot_api.reply_message(event.reply_token, flex_message)
+            logger.info("已發送主選單 Flex 訊息")
+            return
+        
+        # 處理其他訊息
         response = process_message(event)
-        logger.info(f"處理用戶 {event.source.user_id} 的訊息，準備回應")
+        logger.info(f"處理用戶 {user_id} 的訊息，準備回應")
         
         # 檢查是否為 FlexSendMessage 類型
         if isinstance(response, FlexSendMessage):
             line_bot_api.reply_message(event.reply_token, response)
-            logger.info(f"已發送 Flex 訊息回應給用戶 {event.source.user_id}")
-        else:
+            logger.info(f"已發送 Flex 訊息回應給用戶 {user_id}")
+        elif response:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
-            logger.info(f"已發送文字訊息回應給用戶 {event.source.user_id}: {response[:30]}...")
+            logger.info(f"已發送文字訊息回應給用戶 {user_id}: {response[:30]}...")
     
     except Exception as e:
         logger.error(f"回應訊息時發生錯誤: {str(e)}")
         try:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="處理您的請求時發生錯誤，請稍後再試。"))
-        except:
-            logger.error("無法發送錯誤訊息")
+        except Exception as ex:
+            logger.error(f"無法發送錯誤訊息: {str(ex)}")
 
 @handler.add(PostbackEvent)
 def handle_postback(event):

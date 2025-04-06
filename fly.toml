@@ -1,33 +1,40 @@
+# fly.toml app configuration file generated for linebot-ai on 2023-11-23T13:48:49+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
 app = "linebot-ai"
 primary_region = "nrt" # 東京區域，對亞洲用戶較快
 
 [build]
-  dockerfile = "Dockerfile"
+  builder = "paketobuildpacks/builder:base"
 
-[http_service]
+[env]
+  PORT = "8080"
+  LIFF_ID = "2007212914-e3vNnYno"
+  PYTHONUNBUFFERED = "1"
+  LOG_LEVEL = "INFO"
+
+[[services]]
+  protocol = "tcp"
   internal_port = 8080
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
   processes = ["app"]
-  [http_service.concurrency]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+  [services.concurrency]
     type = "connections"
     hard_limit = 25
     soft_limit = 20
 
-[[http_service.routes]]
-  path = "/"
-  handlers = ["http"]
-
-[[http_service.routes]]
-  path = "/webhook"
-  handlers = ["http"]
-
-[env]
-  PORT = "8080"
-  PYTHONUNBUFFERED = "1"
-  LOG_LEVEL = "INFO"
+[processes]
+  app = "gunicorn 'app:app' --bind=0.0.0.0:8080"
 
 [mounts]
   source = "linebot_data"
