@@ -43,9 +43,15 @@ def process_message(event):
         message_text = event.message.text
         logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
         
-        # 檢查是否為 kimi flex 命令
-        if message_text.lower() in ["kimi flex", "kimi主選單", "kimi 主選單", "主選單"]:
-            logger.info(f"用戶 {user_id} 請求主選單")
+        # 檢查是否為 kimi flex 命令 - 特殊檢查，不區分大小寫
+        lower_text = message_text.lower()
+        if lower_text == "kimi flex" or lower_text == "kimi主選單" or lower_text == "kimi 主選單" or lower_text == "主選單":
+            logger.info(f"用戶 {user_id} 請求主選單 (輸入: {message_text})")
+            return FlexMessageService.create_main_menu()
+        
+        # 也檢查單獨的 kimi 命令
+        if lower_text == "kimi":
+            logger.info(f"用戶 {user_id} 請求主選單 (輸入: {message_text})")
             return FlexMessageService.create_main_menu()
         
         # 檢查是否為 JSON 格式（可能是從 LIFF 應用發送的任務數據）
@@ -341,10 +347,6 @@ def process_message(event):
                     return "處理任務時出錯，請使用格式：「@買牛奶 !明天早上9點」或「任務:買牛奶 提醒:明天早上9點」"
         
         # 處理特殊命令
-        if message_text.lower() == 'kimi':
-            # 顯示 Flex 記帳選單
-            return FlexMessageService.create_main_menu()
-        
         if message_text.lower() in ['help', '幫助', '說明']:
             return handle_help_command(user_id)
         

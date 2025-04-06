@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+# 設置環境變數
+export DATABASE_URL=${DATABASE_URL:-sqlite:///data/finances.db}
+export PORT=${PORT:-8080}
+export PYTHONUNBUFFERED=1
+export LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
+export LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
+export LIFF_ID=2007212914-e3vNnYno
+
 # 確保數據目錄存在
 mkdir -p /app/data
 

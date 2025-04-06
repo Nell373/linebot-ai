@@ -28,9 +28,9 @@ import urllib.parse
 logger = logging.getLogger(__name__)
 
 # 從環境變數獲取 LIFF_ID
-LIFF_ID = os.environ.get('LIFF_ID', '1654912345-AbCdEfGh')
-# 直接使用有效的 URL，而不是依賴環境變數
-LIFF_URL = "https://liff.line.me/1657520763-1lA5AQR4"
+LIFF_ID = os.environ.get('LIFF_ID', '2007212914-e3vNnYno')
+# 使用正確的 LIFF URL
+LIFF_URL = f"https://liff.line.me/2007212914-e3vNnYno"
 
 logger.info(f"使用 LIFF URL: {LIFF_URL}")
 
