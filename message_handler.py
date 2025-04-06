@@ -174,19 +174,21 @@ def process_message(event):
                 # 解析任務內容和提醒時間
                 task_info = {}
                 try:
-                    # 嘗試解析「任務:xxx 提醒:xxx」格式
-                    task_match = re.search(r'任務[:：](.+?)(?:\s+提醒[:：]|$)', message_text)
-                    reminder_match = re.search(r'提醒[:：](.+)', message_text)
+                    # 支持兩種格式：「任務:xxx 提醒:xxx」和「@xxx !xxx」
+                    task_match = re.search(r'(任務[:：]|@)(.+?)(?:\s+(提醒[:：]|!)|$)', message_text)
+                    reminder_match = re.search(r'(提醒[:：]|!)(.+)', message_text)
                     
                     if task_match:
-                        task_info['name'] = task_match.group(1).strip()
+                        task_info['name'] = task_match.group(2).strip()
                     else:
                         task_info['name'] = message_text.strip()
                     
                     if reminder_match:
-                        task_info['reminder_time'] = reminder_match.group(1).strip()
+                        task_info['reminder_time'] = reminder_match.group(2).strip()
                     else:
                         task_info['reminder_time'] = '明天早上9點'
+                    
+                    logger.info(f"解析任務: {task_info['name']}, 提醒時間: {task_info['reminder_time']}")
                     
                     # 嘗試解析時間
                     now = datetime.datetime.now()
@@ -206,18 +208,23 @@ def process_message(event):
                         reminder_time = now + datetime.timedelta(days=2)
                     
                     # 處理時間部分
-                    if '早上' in time_text or '上午' in time_text:
+                    if '早上' in time_text or '上午' in time_text or '凌晨' in time_text:
                         # 處理具體時間，如「早上8點」、「早上9點半」
-                        hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                        hour_match = re.search(r'([0-9]+)[點時:]', time_text)
                         if hour_match:
                             hour = int(hour_match.group(1))
-                            # 確保早上的時間在上午
-                            if hour >= 1 and hour <= 12:
+                            # 如果是凌晨，保持小時數不變
+                            if '凌晨' in time_text:
+                                pass  # 凌晨時間保持不變
+                            elif hour >= 1 and hour <= 12:
                                 # 如果是12點，特殊處理為中午12點
                                 if hour == 12:
                                     hour = 12
+                                # 如果是1-5點，可能是指凌晨時間
+                                elif hour >= 1 and hour <= 5:
+                                    pass  # 保持小時數不變，表示凌晨
                                 else:
-                                    # 其他時間保持不變
+                                    # 其他早上時間保持不變
                                     pass
                         else:
                             hour = 9  # 默認早上9點
@@ -230,7 +237,7 @@ def process_message(event):
                             minute = 30
                     
                     elif '下午' in time_text or '傍晚' in time_text:
-                        hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                        hour_match = re.search(r'([0-9]+)[點時:]', time_text)
                         if hour_match:
                             hour = int(hour_match.group(1))
                             # 將下午的時間轉換為24小時制
@@ -251,7 +258,7 @@ def process_message(event):
                             minute = 30
                     
                     elif '晚上' in time_text or '夜晚' in time_text:
-                        hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                        hour_match = re.search(r'([0-9]+)[點時:]', time_text)
                         if hour_match:
                             hour = int(hour_match.group(1))
                             # 將晚上的時間轉換為24小時制
@@ -278,10 +285,10 @@ def process_message(event):
                             hour = int(hour_minute_match.group(1))
                             minute = int(hour_minute_match.group(2))
                         else:
-                            hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                            hour_match = re.search(r'([0-9]+)[點時:]', time_text)
                             if hour_match:
                                 hour = int(hour_match.group(1))
-                                # 上下文判斷：如果沒有明確指定上午/下午，根據時間判斷
+                                # 上下文判斷：如果沒有明確指定上午/下午，根據數字大小判斷
                                 if hour >= 0 and hour <= 5:  # 凌晨
                                     pass  # 已經是24小時制
                                 elif hour >= 6 and hour <= 12:  # 早上
@@ -298,7 +305,7 @@ def process_message(event):
                     
                     # 設置提醒時間的小時和分鐘
                     reminder_time = reminder_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                    logger.info(f"設置提醒時間: {reminder_time.strftime('%Y-%m-%d %H:%M')}, 原始時間文本: {time_text}")
+                    logger.info(f"設置提醒時間: {reminder_time.strftime('%Y-%m-%d %H:%M')}, 原始時間文本: {time_text}, 解析結果: 日期={reminder_time.date()}, 時間={hour}:{minute}")
                     
                     # 創建提醒
                     from models import db, Reminder
@@ -326,7 +333,7 @@ def process_message(event):
                     
                 except Exception as e:
                     logger.error(f"處理任務詳情時出錯: {str(e)}")
-                    return "處理任務時出錯，請使用格式：「任務:買牛奶 提醒:明天早上9點」"
+                    return "處理任務時出錯，請使用格式：「@買牛奶 !明天早上9點」或「任務:買牛奶 提醒:明天早上9點」"
         
         # 處理特殊命令
         if message_text.lower() == 'kimi':
@@ -950,7 +957,7 @@ def handle_postback(event):
         
         elif action == 'create_task':
             # 創建新任務
-            response = "請輸入任務內容，格式為：「任務:內容 提醒:時間」，例如：「任務:買牛奶 提醒:明天早上9點」"
+            response = "請輸入任務內容，格式為：「@任務內容 !提醒時間」，例如：「@買牛奶 !明天早上9點」"
             # 設置用戶狀態
             user_states[user_id] = {
                 'waiting_for': 'task_details'
