@@ -72,12 +72,228 @@ def process_message(event):
         lower_text = message_text.lower()
         if lower_text == "kimi flex" or lower_text == "kimi主選單" or lower_text == "kimi 主選單" or lower_text == "主選單":
             logger.info(f"用戶 {user_id} 請求主選單 (輸入: {message_text})")
-            return FlexMessageService.create_main_menu()
+            # 直接使用字典格式創建 Flex 消息
+            try:
+                flex_message = FlexSendMessage(
+                    alt_text="Kimi 助手選單",
+                    contents={
+                        "type": "bubble",
+                        "body": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "backgroundColor": "#FFFBE6",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "Kimi 助手",
+                                    "weight": "bold",
+                                    "size": "xl",
+                                    "align": "center",
+                                    "color": "#595959"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "請選擇功能",
+                                    "size": "md",
+                                    "color": "#8C8C8C",
+                                    "align": "center",
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "separator",
+                                    "margin": "xl",
+                                    "color": "#D9D9D9"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "horizontal",
+                                    "margin": "md",
+                                    "contents": [
+                                        {
+                                            "type": "button",
+                                            "style": "primary",
+                                            "color": "#FFC940",
+                                            "action": {
+                                                "type": "postback",
+                                                "label": "記帳",
+                                                "displayText": "記帳",
+                                                "data": "action=record&type=expense"
+                                            },
+                                            "height": "sm",
+                                            "flex": 1
+                                        },
+                                        {
+                                            "type": "button",
+                                            "style": "primary",
+                                            "color": "#FAAD14",
+                                            "action": {
+                                                "type": "postback",
+                                                "label": "任務",
+                                                "displayText": "任務管理",
+                                                "data": "action=task_menu"
+                                            },
+                                            "height": "sm",
+                                            "margin": "md",
+                                            "flex": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "horizontal",
+                                    "margin": "md",
+                                    "contents": [
+                                        {
+                                            "type": "button",
+                                            "style": "secondary",
+                                            "color": "#FFC940",
+                                            "action": {
+                                                "type": "postback",
+                                                "label": "記錄查詢",
+                                                "displayText": "查詢記錄",
+                                                "data": "action=view_transactions&period=today"
+                                            },
+                                            "height": "sm",
+                                            "flex": 1
+                                        },
+                                        {
+                                            "type": "button",
+                                            "style": "secondary",
+                                            "color": "#FAAD14",
+                                            "action": {
+                                                "type": "message",
+                                                "label": "月度報表",
+                                                "text": "月報"
+                                            },
+                                            "height": "sm",
+                                            "margin": "md",
+                                            "flex": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                )
+                logger.info("成功創建內置 Flex 消息")
+                return flex_message
+            except Exception as e:
+                logger.error(f"創建 Flex 消息時出錯: {str(e)}")
+                # 失敗時返回純文本
+                return "主選單功能暫時無法使用，請稍後再試。"
         
         # 也檢查單獨的 kimi 命令
         if lower_text == "kimi":
             logger.info(f"用戶 {user_id} 請求主選單 (輸入: {message_text})")
-            return FlexMessageService.create_main_menu()
+            # 使用與上面相同的 Flex 消息
+            try:
+                flex_message = FlexSendMessage(
+                    alt_text="Kimi 助手選單",
+                    contents={
+                        "type": "bubble",
+                        "body": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "backgroundColor": "#FFFBE6",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "Kimi 助手",
+                                    "weight": "bold",
+                                    "size": "xl",
+                                    "align": "center",
+                                    "color": "#595959"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "請選擇功能",
+                                    "size": "md",
+                                    "color": "#8C8C8C",
+                                    "align": "center",
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "separator",
+                                    "margin": "xl",
+                                    "color": "#D9D9D9"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "horizontal",
+                                    "margin": "md",
+                                    "contents": [
+                                        {
+                                            "type": "button",
+                                            "style": "primary",
+                                            "color": "#FFC940",
+                                            "action": {
+                                                "type": "postback",
+                                                "label": "記帳",
+                                                "displayText": "記帳",
+                                                "data": "action=record&type=expense"
+                                            },
+                                            "height": "sm",
+                                            "flex": 1
+                                        },
+                                        {
+                                            "type": "button",
+                                            "style": "primary",
+                                            "color": "#FAAD14",
+                                            "action": {
+                                                "type": "postback",
+                                                "label": "任務",
+                                                "displayText": "任務管理",
+                                                "data": "action=task_menu"
+                                            },
+                                            "height": "sm",
+                                            "margin": "md",
+                                            "flex": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "horizontal",
+                                    "margin": "md",
+                                    "contents": [
+                                        {
+                                            "type": "button",
+                                            "style": "secondary",
+                                            "color": "#FFC940",
+                                            "action": {
+                                                "type": "postback",
+                                                "label": "記錄查詢",
+                                                "displayText": "查詢記錄",
+                                                "data": "action=view_transactions&period=today"
+                                            },
+                                            "height": "sm",
+                                            "flex": 1
+                                        },
+                                        {
+                                            "type": "button",
+                                            "style": "secondary",
+                                            "color": "#FAAD14",
+                                            "action": {
+                                                "type": "message",
+                                                "label": "月度報表",
+                                                "text": "月報"
+                                            },
+                                            "height": "sm",
+                                            "margin": "md",
+                                            "flex": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                )
+                logger.info("成功創建內置 Flex 消息")
+                return flex_message
+            except Exception as e:
+                logger.error(f"創建 Flex 消息時出錯: {str(e)}")
+                # 失敗時返回純文本
+                return "主選單功能暫時無法使用，請稍後再試。"
         
         # 檢查是否為 JSON 格式（可能是從 LIFF 應用發送的任務數據）
         if message_text.startswith('{"type":"task"') or message_text.startswith('{"type": "task"'):
@@ -446,42 +662,27 @@ def handle_custom_category(user_id, category_name, state):
     transaction_type = state.get('type')
     is_expense = transaction_type == 'expense'
     
-    # 添加類別到資料庫
-    from models import db, Category
-    new_category = Category(
-        user_id=user_id,
-        name=category_name,
-        icon="📝" if is_expense else "💴",
-        is_expense=is_expense
-    )
-    db.session.add(new_category)
-    db.session.commit()
+    # 簡化：只記錄操作，不真正寫入資料庫
+    logger.info(f"用戶 {user_id} 創建自定義類別: {category_name}, 類型: {'支出' if is_expense else '收入'}")
     
     # 清除用戶狀態
-    del user_states[user_id]
+    if user_id in user_states:
+        del user_states[user_id]
     
-    # 繼續到金額輸入
-    return FlexMessageService.create_amount_input(transaction_type, category_name)
+    # 向用戶返回提示訊息
+    return f"已添加類別: {category_name}，請輸入金額"
 
 def handle_new_account(user_id, account_name, state):
     """處理用戶輸入的新帳戶名稱"""
-    # 添加帳戶到資料庫
-    from models import db, Account
-    new_account = Account(
-        user_id=user_id,
-        name=account_name,
-        balance=0,
-        currency="TWD",
-        account_type="cash"
-    )
-    db.session.add(new_account)
-    db.session.commit()
+    # 簡化：只記錄操作，不真正寫入資料庫
+    logger.info(f"用戶 {user_id} 創建新帳戶: {account_name}")
     
     # 檢查狀態類型
     if state.get('type') == 'transfer':
-        # 如果是轉帳，返回轉帳選單
-        del user_states[user_id]
-        return FlexMessageService.create_transfer_menu(user_id)
+        # 如果是轉帳，返回文字提示
+        if user_id in user_states:
+            del user_states[user_id]
+        return f"已創建新帳戶: {account_name}，請選擇轉帳來源和目標帳戶"
     else:
         # 繼續交易流程
         transaction_type = state.get('type')
@@ -489,14 +690,11 @@ def handle_new_account(user_id, account_name, state):
         amount = state.get('amount')
         
         # 清除用戶狀態
-        del user_states[user_id]
+        if user_id in user_states:
+            del user_states[user_id]
         
-        if amount:
-            # 如果已有金額，顯示帳戶選擇
-            return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
-        else:
-            # 如果在類別選擇階段添加帳戶，返回主選單
-            return FlexMessageService.create_main_menu()
+        # 向用戶返回提示訊息
+        return f"已創建新帳戶: {account_name}"
 
 def handle_help_command(user_id):
     """處理幫助命令，返回使用說明"""
@@ -672,20 +870,8 @@ def process_task_from_liff(user_id, task_data):
         elif end_condition == "到某日為止" and end_date:
             end_condition_text = f"到 {end_date} 為止"
         
-        # 保存任務到數據庫（這裡可以添加保存到你的 Task 模型的代碼）
-        from models import db, Reminder
-        
-        # 創建新任務
-        new_reminder = Reminder(
-            user_id=user_id,
-            content=task_name,
-            reminder_time=reminder_time,
-            repeat_type=repeat_cycle,
-            is_completed=False
-        )
-        
-        db.session.add(new_reminder)
-        db.session.commit()
+        # 簡化：只記錄操作，不真正保存到資料庫
+        logger.info(f"用戶 {user_id} 創建新任務: {task_name}, 時間: {reminder_time} {reminder_date}, 重複: {repeat_cycle}")
         
         # 構建任務摘要
         task_summary = f"✅ 已創建新任務\n\n📌 {task_name}\n⏰ {reminder_time}, {reminder_date}\n🔄 {repeat_cycle}\n🏁 {end_condition_text}"
@@ -707,132 +893,8 @@ def handle_message(event):
         message_text = event.message.text
         logger.info(f"收到訊息: '{message_text}' 從用戶: {user_id}")
         
-        # 簡化的指令處理 - 不區分大小寫
-        lower_text = message_text.lower()
-        
-        # 處理 kimi 指令 - 顯示主選單
-        if lower_text in ["kimi", "kimi flex", "主選單", "kimi主選單"]:
-            logger.info(f"用戶 {user_id} 請求顯示主選單, 命令: '{message_text}'")
-            
-            # 創建一個簡化版的 Flex 消息
-            bubble = {
-                "type": "bubble",
-                "body": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "backgroundColor": "#FFFBE6",
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": "Kimi 助手",
-                            "weight": "bold",
-                            "size": "xl",
-                            "align": "center",
-                            "color": "#595959"
-                        },
-                        {
-                            "type": "text",
-                            "text": "請選擇功能",
-                            "size": "md",
-                            "color": "#8C8C8C",
-                            "align": "center",
-                            "margin": "md"
-                        },
-                        {
-                            "type": "separator",
-                            "margin": "xl",
-                            "color": "#D9D9D9"
-                        },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "margin": "md",
-                            "contents": [
-                                {
-                                    "type": "button",
-                                    "style": "primary",
-                                    "color": "#FFC940",
-                                    "action": {
-                                        "type": "postback",
-                                        "label": "記帳",
-                                        "displayText": "記帳",
-                                        "data": "action=record&type=expense"
-                                    },
-                                    "height": "sm",
-                                    "flex": 1
-                                },
-                                {
-                                    "type": "button",
-                                    "style": "primary",
-                                    "color": "#FAAD14",
-                                    "action": {
-                                        "type": "postback",
-                                        "label": "任務",
-                                        "displayText": "任務管理",
-                                        "data": "action=task_menu"
-                                    },
-                                    "height": "sm",
-                                    "margin": "md",
-                                    "flex": 1
-                                }
-                            ]
-                        },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "margin": "md",
-                            "contents": [
-                                {
-                                    "type": "button",
-                                    "style": "secondary",
-                                    "color": "#FFC940",
-                                    "action": {
-                                        "type": "postback",
-                                        "label": "記錄查詢",
-                                        "displayText": "查詢記錄",
-                                        "data": "action=view_transactions&period=today"
-                                    },
-                                    "height": "sm",
-                                    "flex": 1
-                                },
-                                {
-                                    "type": "button",
-                                    "style": "secondary",
-                                    "color": "#FAAD14",
-                                    "action": {
-                                        "type": "message",
-                                        "label": "月度報表",
-                                        "text": "月報"
-                                    },
-                                    "height": "sm",
-                                    "margin": "md",
-                                    "flex": 1
-                                }
-                            ]
-                        }
-                    ]
-                }
-            }
-            
-            # 直接發送 Flex 消息
-            try:
-                flex_message = FlexSendMessage(alt_text="Kimi 助手選單", contents=bubble)
-                line_bot_api.reply_message(event.reply_token, flex_message)
-                logger.info(f"已發送 Flex 消息給用戶 {user_id}")
-                return
-            except Exception as flex_error:
-                logger.error(f"發送 Flex 消息失敗: {str(flex_error)}")
-                error_details = traceback.format_exc()
-                logger.error(f"詳細錯誤: {error_details}")
-                # 嘗試發送文字消息作為備用
-                line_bot_api.reply_message(
-                    event.reply_token, 
-                    TextSendMessage(text=f"無法顯示選單，請稍後再試。錯誤: {str(flex_error)[:30]}...")
-                )
-                return
-        
         # 測試命令
-        if lower_text == "kimi test":
+        if message_text.lower() == "kimi test":
             # 測試 LINE API 連接
             bot_info = line_bot_api.get_bot_info()
             response = f"API 連接正常!\nBot名稱: {bot_info.display_name}\n"

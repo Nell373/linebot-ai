@@ -7,7 +7,7 @@ import logging
 import json
 import requests
 from linebot import LineBotApi
-from linebot.models import RichMenu, RichMenuArea, RichMenuBounds, URIAction, MessageAction, PostbackAction
+from linebot.models import RichMenu, RichMenuArea, RichMenuBounds, URIAction, MessageAction, PostbackAction, RichMenuSize
 
 # 設置日誌
 logging.basicConfig(
@@ -16,10 +16,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# 配置 LINE API
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', '')
-LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET', '')
-LIFF_ID = os.environ.get('LIFF_ID', '')
+# 配置 LINE API (直接硬編碼以確保正確性)
+LINE_CHANNEL_ACCESS_TOKEN = "dcHUu60hxSgZGL1cEM/FxzuoSkwrO6lbUVR/yjiysMm8CMahMjWMl7vRsEjvcabnl53oPoAqy/meJTyjwQ2Ie7MXv6sqlbwewb9k9154UF7g89S+4sbqkwjaKLV9RNQ6L6MBcmdACE/WlPCLG+LkhwdB04t89/1O/w1cDnyilFU="
+LINE_CHANNEL_SECRET = "1d260f0f95e6bc35878578a46ab05558"
+LIFF_ID = "2007212914-e3vNnYno"
 
 # LINE API 客戶端
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -27,60 +27,151 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 def create_rich_menu():
     """創建並註冊圖文選單"""
     # 定義圖文選單 (1200x810 像素)
-    rich_menu = RichMenu(
-        size_full=True,  # 全螢幕選單
-        selected=True,   # 預設顯示
-        name='主選單',    # 選單名稱
-        chat_bar_text='展開選單',  # 底部文字
-        areas=[  # 可點擊區域設置
-            # 左上 - 記帳功能
-            RichMenuArea(
-                bounds=RichMenuBounds(x=0, y=0, width=400, height=405),
-                action=PostbackAction(label='記帳', display_text='記帳', data='action=record&type=expense')
-            ),
-            # 中上 - 記錄查詢
-            RichMenuArea(
-                bounds=RichMenuBounds(x=400, y=0, width=400, height=405),
-                action=MessageAction(label='查詢記錄', text='記錄')
-            ),
-            # 右上 - 主選單(Flex)
-            RichMenuArea(
-                bounds=RichMenuBounds(x=800, y=0, width=400, height=405),
-                action=MessageAction(label='主選單', text='kimi')
-            ),
-            # 左下 - 任務管理
-            RichMenuArea(
-                bounds=RichMenuBounds(x=0, y=405, width=400, height=405),
-                action=PostbackAction(label='任務管理', display_text='任務管理', data='action=task_menu')
-            ),
-            # 中下 - 月度報表 
-            RichMenuArea(
-                bounds=RichMenuBounds(x=400, y=405, width=400, height=405),
-                action=MessageAction(label='月度報表', text='月報')
-            ),
-            # 右下 - 幫助
-            RichMenuArea(
-                bounds=RichMenuBounds(x=800, y=405, width=400, height=405),
-                action=MessageAction(label='幫助', text='help')
-            ),
+    rich_menu = {
+        "size": {
+            "width": 1200,
+            "height": 810
+        },
+        "selected": True,
+        "name": "主選單",
+        "chatBarText": "展開選單",
+        "areas": [
+            {
+                "bounds": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 400,
+                    "height": 405
+                },
+                "action": {
+                    "type": "postback",
+                    "label": "記帳",
+                    "data": "action=record&type=expense",
+                    "displayText": "記帳"
+                }
+            },
+            {
+                "bounds": {
+                    "x": 400,
+                    "y": 0,
+                    "width": 400,
+                    "height": 405
+                },
+                "action": {
+                    "type": "message",
+                    "label": "查詢記錄",
+                    "text": "記錄"
+                }
+            },
+            {
+                "bounds": {
+                    "x": 800,
+                    "y": 0,
+                    "width": 400,
+                    "height": 405
+                },
+                "action": {
+                    "type": "message",
+                    "label": "主選單",
+                    "text": "kimi"
+                }
+            },
+            {
+                "bounds": {
+                    "x": 0,
+                    "y": 405,
+                    "width": 400,
+                    "height": 405
+                },
+                "action": {
+                    "type": "postback",
+                    "label": "任務管理",
+                    "data": "action=task_menu",
+                    "displayText": "任務管理"
+                }
+            },
+            {
+                "bounds": {
+                    "x": 400,
+                    "y": 405,
+                    "width": 400,
+                    "height": 405
+                },
+                "action": {
+                    "type": "message",
+                    "label": "月度報表",
+                    "text": "月報"
+                }
+            },
+            {
+                "bounds": {
+                    "x": 800,
+                    "y": 405,
+                    "width": 400,
+                    "height": 405
+                },
+                "action": {
+                    "type": "message",
+                    "label": "幫助",
+                    "text": "help"
+                }
+            }
         ]
-    )
+    }
 
     # 建立選單
     try:
-        rich_menu_id = line_bot_api.create_rich_menu(rich_menu=rich_menu)
-        logger.info(f"圖文選單已創建，ID: {rich_menu_id}")
+        headers = {
+            'Authorization': f'Bearer {LINE_CHANNEL_ACCESS_TOKEN}',
+            'Content-Type': 'application/json'
+        }
         
-        # 上傳圖片
-        with open('richmenu_image.png', 'rb') as f:
-            line_bot_api.set_rich_menu_image(rich_menu_id, 'image/png', f)
-        logger.info("圖文選單圖片已上傳")
+        # 使用 requests 直接向 LINE API 發起請求
+        response = requests.post(
+            'https://api.line.me/v2/bot/richmenu',
+            headers=headers,
+            json=rich_menu
+        )
         
-        # 設置為默認選單
-        line_bot_api.set_default_rich_menu(rich_menu_id)
-        logger.info("圖文選單已設置為默認選單")
-        
-        return rich_menu_id
+        # 檢查響應
+        if response.status_code == 200:
+            rich_menu_id = response.json()['richMenuId']
+            logger.info(f"圖文選單已創建，ID: {rich_menu_id}")
+            
+            # 上傳圖片
+            with open('richmenu_image.png', 'rb') as f:
+                image_response = requests.post(
+                    f'https://api-data.line.me/v2/bot/richmenu/{rich_menu_id}/content',
+                    headers={
+                        'Authorization': f'Bearer {LINE_CHANNEL_ACCESS_TOKEN}',
+                        'Content-Type': 'image/png'
+                    },
+                    data=f.read()
+                )
+            
+            if image_response.status_code == 200:
+                logger.info("圖文選單圖片已上傳")
+            else:
+                logger.error(f"上傳圖片失敗: {image_response.status_code} {image_response.text}")
+                return None
+            
+            # 設置為默認選單
+            default_response = requests.post(
+                f'https://api.line.me/v2/bot/user/all/richmenu/{rich_menu_id}',
+                headers={
+                    'Authorization': f'Bearer {LINE_CHANNEL_ACCESS_TOKEN}'
+                }
+            )
+            
+            if default_response.status_code == 200:
+                logger.info("圖文選單已設置為默認選單")
+                return rich_menu_id
+            else:
+                logger.error(f"設置默認選單失敗: {default_response.status_code} {default_response.text}")
+                return None
+        else:
+            logger.error(f"創建圖文選單失敗: {response.status_code} {response.text}")
+            return None
     except Exception as e:
         logger.error(f"創建圖文選單時發生錯誤: {str(e)}")
         return None
@@ -105,27 +196,40 @@ def create_sample_richmenu_image():
 
 def main():
     """主函數"""
-    if not LINE_CHANNEL_ACCESS_TOKEN:
-        logger.error("LINE_CHANNEL_ACCESS_TOKEN 未設置")
-        return False
-    
     # 檢查是否有現有的 Rich Menu
     try:
-        rich_menu_list = line_bot_api.get_rich_menu_list()
-        if rich_menu_list:
-            logger.info(f"發現 {len(rich_menu_list)} 個現有的圖文選單")
-            for menu in rich_menu_list:
-                logger.info(f"刪除圖文選單: {menu.rich_menu_id}")
-                line_bot_api.delete_rich_menu(menu.rich_menu_id)
-            logger.info("已清除所有現有圖文選單")
+        response = requests.get(
+            'https://api.line.me/v2/bot/richmenu/list',
+            headers={
+                'Authorization': f'Bearer {LINE_CHANNEL_ACCESS_TOKEN}'
+            }
+        )
+        
+        if response.status_code == 200:
+            rich_menu_list = response.json().get('richmenus', [])
+            if rich_menu_list:
+                logger.info(f"發現 {len(rich_menu_list)} 個現有的圖文選單")
+                for menu in rich_menu_list:
+                    menu_id = menu.get('richMenuId')
+                    logger.info(f"刪除圖文選單: {menu_id}")
+                    delete_response = requests.delete(
+                        f'https://api.line.me/v2/bot/richmenu/{menu_id}',
+                        headers={
+                            'Authorization': f'Bearer {LINE_CHANNEL_ACCESS_TOKEN}'
+                        }
+                    )
+                    if delete_response.status_code == 200:
+                        logger.info(f"已刪除圖文選單: {menu_id}")
+                    else:
+                        logger.error(f"刪除圖文選單失敗: {delete_response.status_code} {delete_response.text}")
+                logger.info("已清除所有現有圖文選單")
     except Exception as e:
         logger.error(f"檢查或刪除圖文選單時發生錯誤: {str(e)}")
     
-    # 創建示例圖片
+    # 檢查圖片是否存在
     if not os.path.exists('richmenu_image.png'):
-        if not create_sample_richmenu_image():
-            logger.error("無法創建示例圖片，請提供一個 1200x810 像素的 PNG 圖片")
-            return False
+        logger.error("找不到 richmenu_image.png，請先執行 create_richmenu_image.py 創建圖片")
+        return False
     
     # 創建圖文選單
     rich_menu_id = create_rich_menu()

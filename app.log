@@ -1,0 +1,10 @@
+/Users/nell/linebot-ai/app.py:27: LineBotSdkDeprecatedIn30: Call to deprecated class LineBotApi. (Use v3 class; linebot.v3.<feature>. See https://github.com/line/line-bot-sdk-python/blob/master/README.rst for more details.) -- Deprecated since version 3.0.0.
+  line_bot_api = LineBotApi(channel_access_token)
+/Users/nell/linebot-ai/app.py:28: LineBotSdkDeprecatedIn30: Call to deprecated class WebhookHandler. (Use 'from linebot.v3.webhook import WebhookHandler' instead. See https://github.com/line/line-bot-sdk-python/blob/master/README.rst for more details.) -- Deprecated since version 3.0.0.
+  handler = WebhookHandler(channel_secret)
+2025-04-07 03:27:18,894 - services.flex_message_service - INFO - 使用 LIFF URL: https://liff.line.me/2007212914-e3vNnYno
+2025-04-07 03:27:18,894 - services.flex_message_service - INFO - LIFF Channel Secret 設定狀態: 已設定
+ * Serving Flask app 'app'
+ * Debug mode: off
+Address already in use
+Port 8082 is in use by another program. Either identify and stop that program, or start the server with a different port.

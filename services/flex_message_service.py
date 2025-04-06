@@ -27,12 +27,14 @@ import urllib.parse
 
 logger = logging.getLogger(__name__)
 
-# 從環境變數獲取 LIFF_ID
+# 從環境變數獲取 LIFF 設定
 LIFF_ID = os.environ.get('LIFF_ID', '2007212914-e3vNnYno')
+LIFF_CHANNEL_SECRET = os.environ.get('LIFF_CHANNEL_SECRET', '')
 # 使用正確的 LIFF URL
-LIFF_URL = f"https://liff.line.me/2007212914-e3vNnYno"
+LIFF_URL = f"https://liff.line.me/{LIFF_ID}"
 
 logger.info(f"使用 LIFF URL: {LIFF_URL}")
+logger.info(f"LIFF Channel Secret 設定狀態: {'已設定' if LIFF_CHANNEL_SECRET else '未設定'}")
 
 class FlexMessageService:
     @staticmethod
