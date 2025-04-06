@@ -41,6 +41,18 @@ def process_message(event):
         message_text = event.message.text
         logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
         
+        # 檢查是否是快速支出命令（例如：早餐-500）
+        quick_expense = FinanceService.parse_quick_expense_command(message_text)
+        if quick_expense:
+            logger.info(f"檢測到快速支出命令: {quick_expense}")
+            # 直接處理快速支出流程，在選類別時自動帶入備註
+            return FinanceService.prepare_quick_expense(
+                user_id=user_id,
+                amount=quick_expense['amount'],
+                category_keyword=quick_expense['category_keyword'],
+                note=quick_expense['note']  # 將類別名稱作為備註
+            )
+        
         # 檢查用戶是否處於特定狀態（例如等待輸入金額）
         if user_id in user_states:
             state = user_states[user_id]
@@ -467,24 +479,24 @@ def handle_postback(event):
             # 用戶在快速支出界面選擇了類別
             category = params.get('category')
             amount = float(params.get('amount'))
+            note = params.get('note')  # 獲取備註，可能為None
             
             # 記錄操作
-            logger.info(f"用戶 {user_id} 執行快速支出：{category} ${amount}")
+            logger.info(f"用戶 {user_id} 執行快速支出：{category} ${amount} 備註:{note}")
             
             # 直接添加交易記錄
             add_result = FinanceService.add_transaction(
                 user_id=user_id,
                 amount=amount,
                 category_name=category,
-                note=None,
+                note=note,  # 使用備註，可能為None
                 account_name="默認",
                 is_expense=True
             )
             logger.info(f"交易記錄結果: {add_result}")
             
             # 返回確認訊息
-            response = FlexMessageService.create_confirmation("expense", category, amount, "默認", None)
-            logger.info(f"準備發送確認訊息給用戶 {user_id}")
+            response = FlexMessageService.create_confirmation("expense", category, amount, "默認", note)
         
         elif action == 'create_category':
             # 用戶選擇創建新類別

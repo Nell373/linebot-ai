@@ -804,13 +804,14 @@ class FlexMessageService:
         )
 
     @staticmethod
-    def create_category_selection_for_quick_expense(user_id, amount, category_keyword, categories):
+    def create_category_selection_for_quick_expense(user_id, amount, category_keyword, categories, note=None):
         """
         創建快速支出的類別選擇界面
         :param user_id: 用戶ID
         :param amount: 支出金額
         :param category_keyword: 用戶輸入的類別關鍵字
         :param categories: 可選的類別列表
+        :param note: 可選備註
         """
         # 篩選與輸入關鍵字相關的類別
         filtered_categories = []
@@ -825,6 +826,11 @@ class FlexMessageService:
         # 創建類別選擇按鈕
         category_buttons = []
         for category in filtered_categories:
+            # 創建Postback數據，如果有備註則包含
+            postback_data = f"action=quick_expense&amount={amount}&category={category.name}"
+            if note:
+                postback_data += f"&note={note}"
+                
             category_buttons.append(
                 ButtonComponent(
                     style="secondary",
@@ -832,7 +838,7 @@ class FlexMessageService:
                     action=PostbackAction(
                         label=f"{category.icon} {category.name}",
                         display_text=f"選擇類別：{category.name}",
-                        data=f"action=quick_expense&amount={amount}&category={category.name}"
+                        data=postback_data
                     ),
                     height="sm",
                     margin="md"

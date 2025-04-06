@@ -430,7 +430,7 @@ class FinanceService:
         return None
 
     @staticmethod
-    def prepare_quick_expense(user_id, amount, category_keyword):
+    def prepare_quick_expense(user_id, amount, category_keyword, note=None):
         """準備快速支出流程，返回 Flex 訊息讓用戶選擇類別"""
         try:
             # 確保用戶已初始化
@@ -455,7 +455,13 @@ class FinanceService:
             
             # 準備跳轉到 Flex 訊息服務
             from services.flex_message_service import FlexMessageService
-            return FlexMessageService.create_category_selection_for_quick_expense(user_id, amount, category_keyword, categories)
+            return FlexMessageService.create_category_selection_for_quick_expense(
+                user_id=user_id, 
+                amount=amount, 
+                category_keyword=category_keyword, 
+                categories=categories,
+                note=note
+            )
             
         except Exception as e:
             logger.error(f"準備快速支出失敗: {str(e)}")
@@ -473,7 +479,8 @@ class FinanceService:
             return FinanceService.prepare_quick_expense(
                 user_id=user_id,
                 amount=command['amount'],
-                category_keyword=command['category']
+                category_keyword=command['category'],
+                note=command.get('note')
             )
         
         if command['type'] == 'expense':
@@ -512,5 +519,26 @@ class FinanceService:
             
             # 創建 Flex 訊息
             return create_monthly_report_flex(report_data, year, month)
+        
+        return None
+
+    @staticmethod
+    def parse_quick_expense_command(text):
+        """解析快速支出命令，例如 '早餐-500'"""
+        pattern = r'^(.+?)[\\-－]([0-9,]+)$'
+        match = re.match(pattern, text)
+        
+        if match:
+            category_keyword = match.group(1).strip()
+            amount_str = match.group(2).replace(',', '')
+            try:
+                amount = float(amount_str)
+                return {
+                    'category_keyword': category_keyword,
+                    'amount': amount,
+                    'note': category_keyword  # 保存類別關鍵字作為備註
+                }
+            except ValueError:
+                return None
         
         return None 
