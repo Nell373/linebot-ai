@@ -1,13 +1,21 @@
 #!/bin/bash
 set -e
 
-# 設置環境變數
+# 設置環境變數 - 硬編碼憑證（在生產環境中應該使用環境變數或秘密管理）
 export DATABASE_URL=${DATABASE_URL:-sqlite:///data/finances.db}
 export PORT=${PORT:-8080}
 export PYTHONUNBUFFERED=1
-export LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
-export LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
-export LIFF_ID=2007212914-e3vNnYno
+export LINE_CHANNEL_SECRET="1d260f0f95e6bc35878578a46ab05558"
+export LINE_CHANNEL_ACCESS_TOKEN="dcHUu60hxSgZGL1cEM/FxzuoSkwrO6lbUVR/yjiysMm8CMahMjWMl7vRsEjvcabnl53oPoAqy/meJTyjwQ2Ie7MXv6sqlbwewb9k9154UF7g89S+4sbqkwjaKLV9RNQ6L6MBcmdACE/WlPCLG+LkhwdB04t89/1O/w1cDnyilFU="
+export LIFF_ID="2007212914-e3vNnYno"
+
+# 顯示環境變數檢查
+echo "=== 環境變數檢查 ==="
+echo "LINE_CHANNEL_SECRET: [已設定，長度: ${#LINE_CHANNEL_SECRET}]"
+echo "LINE_CHANNEL_ACCESS_TOKEN: [已設定，長度: ${#LINE_CHANNEL_ACCESS_TOKEN}]"
+echo "LIFF_ID: ${LIFF_ID}"
+echo "PORT: ${PORT}"
+echo "DATABASE_URL: ${DATABASE_URL}"
 
 # 確保數據目錄存在
 mkdir -p /app/data

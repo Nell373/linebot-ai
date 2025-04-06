@@ -43,6 +43,29 @@ def process_message(event):
         message_text = event.message.text
         logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
         
+        # 檢查是否為 kimi test 命令
+        if message_text.lower() == "kimi test":
+            logger.info(f"用戶 {user_id} 請求 API 測試")
+            try:
+                # 測試 LINE API 憑證
+                test_result = f"API 憑證測試:\n"
+                test_result += f"Channel Secret: {'已設定' if os.environ.get('LINE_CHANNEL_SECRET') else '未設定'}\n"
+                test_result += f"Channel Access Token: {'已設定' if os.environ.get('LINE_CHANNEL_ACCESS_TOKEN') else '未設定'}\n"
+                test_result += f"LIFF ID: {os.environ.get('LIFF_ID', '未設定')}"
+                
+                # 嘗試獲取 bot 資訊以確認 API 連接正常
+                try:
+                    bot_info = line_bot_api.get_bot_info()
+                    test_result += f"\n\nBot 資訊獲取成功:\nBot名稱: {bot_info.display_name}\n"
+                    test_result += f"Bot頭像: {bot_info.picture_url}\n"
+                    test_result += "LINE Bot API 連接正常!"
+                except Exception as api_error:
+                    test_result += f"\n\nBot 資訊獲取失敗: {str(api_error)}"
+                
+                return test_result
+            except Exception as e:
+                return f"API 測試過程發生錯誤: {str(e)}"
+        
         # 檢查是否為 kimi flex 命令 - 特殊檢查，不區分大小寫
         lower_text = message_text.lower()
         if lower_text == "kimi flex" or lower_text == "kimi主選單" or lower_text == "kimi 主選單" or lower_text == "主選單":
@@ -680,34 +703,45 @@ def handle_message(event):
     try:
         user_id = event.source.user_id
         message_text = event.message.text
-        logger.info(f"處理訊息: {message_text} 從用戶: {user_id}")
+        logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
         
-        # 直接檢查特定命令
-        if message_text.lower() in ["kimi", "kimi flex", "kimi主選單", "主選單"]:
-            logger.info(f"用戶 {user_id} 請求顯示主選單")
-            flex_message = FlexMessageService.create_main_menu()
-            line_bot_api.reply_message(event.reply_token, flex_message)
-            logger.info("已發送主選單 Flex 訊息")
-            return
+        # 直接處理特殊命令 - 不區分大小寫
+        lower_text = message_text.lower()
+        
+        # 直接處理 kimi 和主選單命令
+        if lower_text in ["kimi", "kimi flex", "kimi主選單", "主選單"]:
+            logger.info(f"檢測到主選單命令: {message_text}")
+            try:
+                menu = FlexMessageService.create_main_menu()
+                line_bot_api.reply_message(event.reply_token, menu)
+                logger.info("成功發送主選單")
+                return
+            except Exception as e:
+                logger.error(f"發送主選單失敗: {str(e)}")
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"顯示主選單時發生錯誤: {str(e)}"))
+                return
         
         # 處理其他訊息
         response = process_message(event)
-        logger.info(f"處理用戶 {user_id} 的訊息，準備回應")
+        logger.info(f"處理完成，準備回應用戶 {user_id}")
         
         # 檢查是否為 FlexSendMessage 類型
         if isinstance(response, FlexSendMessage):
+            logger.info("準備發送 Flex 訊息")
             line_bot_api.reply_message(event.reply_token, response)
-            logger.info(f"已發送 Flex 訊息回應給用戶 {user_id}")
+            logger.info(f"已發送 Flex 訊息給用戶 {user_id}")
         elif response:
+            logger.info(f"準備發送文字訊息: {response[:30]}...")
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
-            logger.info(f"已發送文字訊息回應給用戶 {user_id}: {response[:30]}...")
+            logger.info(f"已發送文字訊息給用戶 {user_id}")
     
     except Exception as e:
-        logger.error(f"回應訊息時發生錯誤: {str(e)}")
+        logger.error(f"處理訊息發生錯誤: {str(e)}")
         try:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="處理您的請求時發生錯誤，請稍後再試。"))
-        except Exception as ex:
-            logger.error(f"無法發送錯誤訊息: {str(ex)}")
+            error_message = f"處理您的請求時發生錯誤: {str(e)}"
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=error_message))
+        except Exception as inner_e:
+            logger.error(f"無法發送錯誤訊息: {str(inner_e)}")
 
 @handler.add(PostbackEvent)
 def handle_postback(event):

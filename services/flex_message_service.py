@@ -38,102 +38,110 @@ class FlexMessageService:
     @staticmethod
     def create_main_menu():
         """創建主選單 (功能選擇)"""
-        bubble = BubbleContainer(
-            body=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=[
-                    TextComponent(
-                        text="Kimi 助手",
-                        weight="bold",
-                        size="xl",
-                        align="center",
-                        color="#595959"  # 主文字色
-                    ),
-                    TextComponent(
-                        text="請選擇功能",
-                        size="md",
-                        color="#8C8C8C",  # 次要文字色
-                        align="center",
-                        margin="md"
-                    ),
-                    SeparatorComponent(margin="xl", color="#D9D9D9"),  # 邊框用灰
-                    BoxComponent(
-                        layout="horizontal",
-                        margin="md",
-                        contents=[
-                            ButtonComponent(
-                                style="primary",
-                                color="#FFC940",  # 主色 Primary
-                                action=PostbackAction(
-                                    label="記帳",
-                                    display_text="記帳",
-                                    data="action=record&type=expense"
+        try:
+            logger.info("開始創建主選單")
+            bubble = BubbleContainer(
+                body=BoxComponent(
+                    layout="vertical",
+                    backgroundColor="#FFFBE6",  # 淡黃背景區塊
+                    contents=[
+                        TextComponent(
+                            text="Kimi 助手",
+                            weight="bold",
+                            size="xl",
+                            align="center",
+                            color="#595959"  # 主文字色
+                        ),
+                        TextComponent(
+                            text="請選擇功能",
+                            size="md",
+                            color="#8C8C8C",  # 次要文字色
+                            align="center",
+                            margin="md"
+                        ),
+                        SeparatorComponent(margin="xl", color="#D9D9D9"),  # 邊框用灰
+                        BoxComponent(
+                            layout="horizontal",
+                            margin="md",
+                            contents=[
+                                ButtonComponent(
+                                    style="primary",
+                                    color="#FFC940",  # 主色 Primary
+                                    action=PostbackAction(
+                                        label="記帳",
+                                        display_text="記帳",
+                                        data="action=record&type=expense"
+                                    ),
+                                    height="sm",
+                                    flex=1
                                 ),
-                                height="sm",
-                                flex=1
-                            ),
-                            ButtonComponent(
-                                style="primary",
-                                color="#FAAD14",  # 強調亮點黃
-                                action=PostbackAction(
-                                    label="任務",
-                                    display_text="任務管理",
-                                    data="action=task_menu"
+                                ButtonComponent(
+                                    style="primary",
+                                    color="#FAAD14",  # 強調亮點黃
+                                    action=PostbackAction(
+                                        label="任務",
+                                        display_text="任務管理",
+                                        data="action=task_menu"
+                                    ),
+                                    height="sm",
+                                    margin="md",
+                                    flex=1
+                                )
+                            ]
+                        ),
+                        BoxComponent(
+                            layout="horizontal",
+                            margin="md",
+                            contents=[
+                                ButtonComponent(
+                                    style="secondary",
+                                    color="#FFC940",  # 主色 Primary
+                                    action=PostbackAction(
+                                        label="記錄查詢",
+                                        display_text="查詢記錄",
+                                        data="action=view_transactions&period=today"
+                                    ),
+                                    height="sm",
+                                    flex=1
                                 ),
-                                height="sm",
-                                margin="md",
-                                flex=1
-                            )
-                        ]
-                    ),
-                    BoxComponent(
-                        layout="horizontal",
-                        margin="md",
-                        contents=[
-                            ButtonComponent(
-                                style="secondary",
-                                color="#FFC940",  # 主色 Primary
-                                action=PostbackAction(
-                                    label="記錄查詢",
-                                    display_text="查詢記錄",
-                                    data="action=view_transactions&period=today"
-                                ),
-                                height="sm",
-                                flex=1
-                            ),
-                            ButtonComponent(
-                                style="secondary",
-                                color="#FAAD14",  # 強調亮點黃
-                                action=MessageAction(
-                                    label="月度報表",
-                                    text="月報"
-                                ),
-                                height="sm",
-                                margin="md",
-                                flex=1
-                            )
-                        ]
-                    )
-                ]
-            )
-        )
-        
-        return FlexSendMessage(
-            alt_text="Kimi 助手選單",
-            contents=bubble,
-            quick_reply=QuickReply(items=[
-                QuickReplyButton(
-                    action=MessageAction(label="最近記錄", text="今天")
-                ),
-                QuickReplyButton(
-                    action=MessageAction(label="月度報表", text="月報")
-                ),
-                QuickReplyButton(
-                    action=MessageAction(label="編輯記錄", text="記錄")
+                                ButtonComponent(
+                                    style="secondary",
+                                    color="#FAAD14",  # 強調亮點黃
+                                    action=MessageAction(
+                                        label="月度報表",
+                                        text="月報"
+                                    ),
+                                    height="sm",
+                                    margin="md",
+                                    flex=1
+                                )
+                            ]
+                        )
+                    ]
                 )
-            ])
-        )
+            )
+            
+            logger.info("成功建立 Bubble 主選單")
+            flex_message = FlexSendMessage(
+                alt_text="Kimi 助手選單",
+                contents=bubble,
+                quick_reply=QuickReply(items=[
+                    QuickReplyButton(
+                        action=MessageAction(label="最近記錄", text="今天")
+                    ),
+                    QuickReplyButton(
+                        action=MessageAction(label="月度報表", text="月報")
+                    ),
+                    QuickReplyButton(
+                        action=MessageAction(label="編輯記錄", text="記錄")
+                    )
+                ])
+            )
+            logger.info("主選單 FlexSendMessage 創建完成")
+            return flex_message
+        except Exception as e:
+            logger.error(f"創建主選單時發生錯誤: {str(e)}")
+            raise
 
     @staticmethod
     def create_category_selection(user_id, transaction_type):
