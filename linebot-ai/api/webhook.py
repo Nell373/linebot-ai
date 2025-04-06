@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', ''))
 webhook_handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET', ''))
 
-class Handler(BaseHTTPRequestHandler):
+class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
