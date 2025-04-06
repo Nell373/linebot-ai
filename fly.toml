@@ -12,6 +12,8 @@ primary_region = "nrt" # 東京區域，對亞洲用戶較快
 [env]
   PORT = "8080"
   LIFF_ID = "2007212914-e3vNnYno"
+  LINE_CHANNEL_SECRET = "1d260f0f95e6bc35878578a46ab05558"
+  LINE_CHANNEL_ACCESS_TOKEN = "dcHUu60hxSgZGL1cEM/FxzuoSkwrO6lbUVR/yjiysMm8CMahMjWMl7vRsEjvcabnl53oPoAqy/meJTyjwQ2Ie7MXv6sqlbwewb9k9154UF7g89S+4sbqkwjaKLV9RNQ6L6MBcmdACE/WlPCLG+LkhwdB04t89/1O/w1cDnyilFU="
   PYTHONUNBUFFERED = "1"
   LOG_LEVEL = "INFO"
 
