@@ -16,6 +16,14 @@ primary_region = "nrt" # 東京區域，對亞洲用戶較快
     hard_limit = 25
     soft_limit = 20
 
+[[http_service.routes]]
+  path = "/"
+  handlers = ["http"]
+
+[[http_service.routes]]
+  path = "/webhook"
+  handlers = ["http"]
+
 [env]
   PORT = "8080"
   PYTHONUNBUFFERED = "1"
