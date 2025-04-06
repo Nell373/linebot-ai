@@ -47,10 +47,19 @@ def process_message(event):
             if state.get('waiting_for') == 'amount':
                 # 用戶正在輸入金額
                 try:
-                    amount = int(message_text)
+                    amount = float(message_text)  # 使用 float 而不是 int 來支持小數金額
+                    logger.info(f"用戶 {user_id} 輸入金額: {amount}")
                     return handle_amount_input(user_id, amount, state)
                 except ValueError:
-                    return "請輸入有效的數字金額。"
+                    # 嘗試檢查是否包含逗號或其他非數字字符
+                    try:
+                        # 移除逗號、空格等字符
+                        cleaned_text = message_text.replace(',', '').replace(' ', '')
+                        amount = float(cleaned_text)
+                        logger.info(f"用戶 {user_id} 輸入經過清理的金額: {amount}")
+                        return handle_amount_input(user_id, amount, state)
+                    except ValueError:
+                        return "請輸入有效的數字金額，例如: 100 或 1,234.56"
             elif state.get('waiting_for') == 'note':
                 # 用戶正在輸入備註
                 return handle_note_input(user_id, message_text, state)
@@ -412,7 +421,8 @@ def handle_postback(event):
             # 保存用戶狀態
             user_states[user_id] = {
                 'type': transaction_type,
-                'category': category
+                'category': category,
+                'waiting_for': 'amount'  # 添加等待輸入金額的狀態標記
             }
             
             # 轉到金額輸入
