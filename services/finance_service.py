@@ -343,6 +343,21 @@ class FinanceService:
         monthly_pattern = r'^月報(?:(\d{4})-(\d{1,2}))?$'
         monthly_match = re.match(monthly_pattern, text)
         
+        # 快速支出格式：類別-金額
+        # 例如：早餐-500
+        quick_expense_pattern = r'^([\u4e00-\u9fa5a-zA-Z]+)-(\d+)$'
+        quick_expense_match = re.match(quick_expense_pattern, text)
+        
+        if quick_expense_match:
+            category = quick_expense_match.group(1)
+            amount = int(quick_expense_match.group(2))
+            
+            return {
+                'type': 'quick_expense',
+                'category': category,
+                'amount': amount
+            }
+        
         if expense_match1:
             category = expense_match1.group(1)
             amount = int(expense_match1.group(2))
@@ -415,12 +430,51 @@ class FinanceService:
         return None
 
     @staticmethod
+    def prepare_quick_expense(user_id, amount, category_keyword):
+        """準備快速支出流程，返回 Flex 訊息讓用戶選擇類別"""
+        try:
+            # 確保用戶已初始化
+            default_account = Account.query.filter_by(user_id=user_id, name="默認").first()
+            if not default_account:
+                FinanceService.initialize_user(user_id)
+                
+            # 查詢該用戶的所有支出類別
+            categories = Category.query.filter_by(user_id=user_id, is_expense=True).all()
+            
+            # 如果沒有可用類別，使用默認支出類別
+            if not categories:
+                # 使用預設類別，這裡不再實際創建，只是提供選擇
+                categories = []
+                for category_data in DEFAULT_EXPENSE_CATEGORIES:
+                    category = Category(
+                        name=category_data["name"],
+                        icon=category_data["icon"],
+                        is_expense=True
+                    )
+                    categories.append(category)
+            
+            # 準備跳轉到 Flex 訊息服務
+            from services.flex_message_service import FlexMessageService
+            return FlexMessageService.create_category_selection_for_quick_expense(user_id, amount, category_keyword, categories)
+            
+        except Exception as e:
+            logger.error(f"準備快速支出失敗: {str(e)}")
+            return f"處理快速支出請求時出錯。錯誤: {str(e)}"
+
+    @staticmethod
     def process_finance_command(text, user_id):
         """處理財務相關命令"""
         command = FinanceService.parse_transaction_command(text)
         
         if not command:
             return None
+            
+        if command['type'] == 'quick_expense':
+            return FinanceService.prepare_quick_expense(
+                user_id=user_id,
+                amount=command['amount'],
+                category_keyword=command['category']
+            )
         
         if command['type'] == 'expense':
             return FinanceService.add_transaction(

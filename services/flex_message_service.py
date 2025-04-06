@@ -793,4 +793,124 @@ class FlexMessageService:
         return FlexSendMessage(
             alt_text="選擇轉出帳戶",
             contents=bubble
+        )
+
+    @staticmethod
+    def create_category_selection_for_quick_expense(user_id, amount, category_keyword, categories):
+        """
+        創建快速支出的類別選擇界面
+        :param user_id: 用戶ID
+        :param amount: 支出金額
+        :param category_keyword: 用戶輸入的類別關鍵字
+        :param categories: 可選的類別列表
+        """
+        # 篩選與輸入關鍵字相關的類別
+        filtered_categories = []
+        for category in categories:
+            if category_keyword.lower() in category.name.lower() or category.name.lower() in category_keyword.lower():
+                filtered_categories.append(category)
+        
+        # 如果沒有找到匹配的類別，顯示所有類別
+        if not filtered_categories:
+            filtered_categories = categories
+        
+        # 創建類別選擇按鈕
+        category_buttons = []
+        for category in filtered_categories:
+            category_buttons.append(
+                ButtonComponent(
+                    style="secondary",
+                    color="#27ACB2",
+                    action=PostbackAction(
+                        label=f"{category.icon} {category.name}",
+                        display_text=f"選擇類別：{category.name}",
+                        data=f"action=quick_expense&amount={amount}&category={category.name}"
+                    ),
+                    height="sm",
+                    margin="md"
+                )
+            )
+        
+        # 如果沒有可用類別，添加一個創建新類別的按鈕
+        if not category_buttons:
+            category_buttons.append(
+                ButtonComponent(
+                    style="primary",
+                    action=PostbackAction(
+                        label=f"創建新類別 '{category_keyword}'",
+                        display_text=f"創建新類別：{category_keyword}",
+                        data=f"action=create_category&name={category_keyword}&is_expense=true&amount={amount}"
+                    ),
+                    height="sm",
+                    margin="md"
+                )
+            )
+        
+        # 添加創建新類別的按鈕
+        category_buttons.append(
+            ButtonComponent(
+                style="link",
+                action=PostbackAction(
+                    label="創建新類別",
+                    display_text="創建新類別",
+                    data=f"action=custom_category&type=expense&quick_expense=true&amount={amount}"
+                ),
+                height="sm",
+                margin="md"
+            )
+        )
+        
+        bubble = BubbleContainer(
+            header=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FF6B6E",
+                paddingAll="10px",
+                contents=[
+                    TextComponent(
+                        text=f"支出：${amount}",
+                        color="#FFFFFF",
+                        weight="bold",
+                        size="lg",
+                        align="center"
+                    )
+                ]
+            ),
+            body=BoxComponent(
+                layout="vertical",
+                contents=[
+                    TextComponent(
+                        text="請選擇支出類別",
+                        size="md",
+                        color="#888888",
+                        align="center",
+                        margin="md"
+                    ),
+                    SeparatorComponent(margin="md"),
+                    BoxComponent(
+                        layout="vertical",
+                        margin="md",
+                        contents=category_buttons
+                    )
+                ]
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                contents=[
+                    ButtonComponent(
+                        style="primary",
+                        color="#cccccc",
+                        action=PostbackAction(
+                            label="取消",
+                            display_text="取消記帳",
+                            data="action=cancel"
+                        ),
+                        height="sm"
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text="選擇支出類別",
+            contents=bubble
         ) 

@@ -355,142 +355,202 @@ def handle_message(event):
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
-    """處理 Postback 事件"""
-    user_id = event.source.user_id
-    data = event.postback.data
-    logger.info(f"Postback: {data} 從用戶: {user_id}")
-    
-    # 解析 postback 數據
-    parsed_data = {}
-    for pair in data.split('&'):
-        key, value = pair.split('=')
-        parsed_data[key] = urllib.parse.unquote(value)
-    
-    action = parsed_data.get('action')
-    
-    if action == 'main_menu':
-        # 顯示主選單
-        response = FlexMessageService.create_main_menu()
-    
-    elif action == 'record':
-        # 開始記帳流程，顯示類別選擇
-        transaction_type = parsed_data.get('type')
-        if transaction_type == 'transfer':
-            response = FlexMessageService.create_transfer_menu(user_id)
+    """處理收到的 Postback 事件"""
+    try:
+        user_id = event.source.user_id
+        postback_data = event.postback.data
+        logger.info(f"收到 Postback: {postback_data} 從用戶: {user_id}")
+        
+        # 解析 postback 數據
+        params = dict(urllib.parse.parse_qsl(postback_data))
+        action = params.get('action')
+        
+        if action == 'record':
+            # 記錄交易流程開始
+            transaction_type = params.get('type')
+            return FlexMessageService.create_category_selection(user_id, transaction_type)
+        
+        elif action == 'category':
+            # 用戶選擇了類別
+            transaction_type = params.get('type')
+            category = params.get('category')
+            
+            # 保存用戶狀態
+            user_states[user_id] = {
+                'type': transaction_type,
+                'category': category
+            }
+            
+            # 轉到金額輸入
+            return FlexMessageService.create_amount_input(transaction_type, category)
+        
+        elif action == 'amount':
+            # 用戶輸入完金額
+            transaction_type = params.get('type')
+            category = params.get('category')
+            amount = float(params.get('amount'))
+            
+            # 更新用戶狀態
+            user_states[user_id] = {
+                'type': transaction_type,
+                'category': category,
+                'amount': amount
+            }
+            
+            # 轉到帳戶選擇
+            return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+        
+        elif action == 'account':
+            # 用戶選擇了帳戶
+            transaction_type = params.get('type')
+            category = params.get('category')
+            amount = float(params.get('amount'))
+            account = params.get('account')
+            
+            # 更新用戶狀態
+            user_states[user_id] = {
+                'type': transaction_type,
+                'category': category,
+                'amount': amount,
+                'account': account,
+                'waiting_for': 'note'
+            }
+            
+            # 詢問備註
+            return "請輸入備註（如不需要，請輸入「無」）："
+        
+        elif action == 'quick_expense':
+            # 用戶在快速支出界面選擇了類別
+            category = params.get('category')
+            amount = float(params.get('amount'))
+            
+            # 直接添加交易記錄
+            response = FinanceService.add_transaction(
+                user_id=user_id,
+                amount=amount,
+                category_name=category,
+                note=None,
+                account_name="默認",
+                is_expense=True
+            )
+            
+            # 返回確認訊息
+            return FlexMessageService.create_confirmation("expense", category, amount, "默認", None)
+        
+        elif action == 'create_category':
+            # 用戶選擇創建新類別
+            name = params.get('name')
+            is_expense = params.get('is_expense') == 'true'
+            amount = params.get('amount')
+            
+            # 創建新類別
+            from models import db, Category
+            icon = "📝" if is_expense else "💴"
+            new_category = Category(
+                user_id=user_id,
+                name=name,
+                icon=icon,
+                is_expense=is_expense
+            )
+            db.session.add(new_category)
+            db.session.commit()
+            
+            if amount:
+                # 如果是通過快速支出創建的類別，直接添加交易記錄
+                amount_float = float(amount)
+                response = FinanceService.add_transaction(
+                    user_id=user_id,
+                    amount=amount_float,
+                    category_name=name,
+                    note=None,
+                    account_name="默認",
+                    is_expense=is_expense
+                )
+                
+                # 返回確認訊息
+                return FlexMessageService.create_confirmation("expense", name, amount_float, "默認", None)
+            else:
+                # 否則回到主選單
+                return FlexMessageService.create_main_menu()
+        
+        elif action == 'custom_category':
+            # 用戶要創建自定義類別
+            transaction_type = params.get('type')
+            quick_expense = params.get('quick_expense') == 'true'
+            amount = params.get('amount')
+            
+            # 更新用戶狀態
+            state = {
+                'type': transaction_type,
+                'waiting_for': 'custom_category'
+            }
+            
+            if quick_expense and amount:
+                state['quick_expense'] = True
+                state['amount'] = float(amount)
+                
+            user_states[user_id] = state
+            
+            # 提示輸入類別名稱
+            return "請輸入新的類別名稱："
+        
+        elif action == 'new_account':
+            # 用戶要創建新帳戶
+            transaction_type = params.get('type')
+            amount = params.get('amount')
+            category = params.get('category')
+            
+            # 更新用戶狀態
+            state = {
+                'type': transaction_type,
+                'waiting_for': 'new_account'
+            }
+            
+            if amount:
+                state['amount'] = float(amount)
+            
+            if category:
+                state['category'] = category
+                
+            user_states[user_id] = state
+            
+            # 提示輸入帳戶名稱
+            return "請輸入新的帳戶名稱："
+        
+        elif action == 'skip_note':
+            # 用戶跳過輸入備註
+            transaction_type = params.get('type')
+            category = params.get('category')
+            amount = float(params.get('amount'))
+            account = params.get('account')
+            
+            # 添加交易記錄
+            is_expense = transaction_type == 'expense'
+            response = FinanceService.add_transaction(
+                user_id=user_id,
+                amount=amount,
+                category_name=category,
+                note=None,
+                account_name=account,
+                is_expense=is_expense
+            )
+            
+            # 返回確認訊息
+            return FlexMessageService.create_confirmation(transaction_type, category, amount, account, None)
+        
+        elif action == 'cancel':
+            # 用戶取消操作
+            if user_id in user_states:
+                del user_states[user_id]
+            
+            return "已取消當前操作。"
+        
         else:
-            response = FlexMessageService.create_category_selection(user_id, transaction_type)
+            return "未知的操作。"
     
-    elif action == 'category':
-        # 選擇了類別，顯示金額輸入
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        response = FlexMessageService.create_amount_input(transaction_type, category)
-        
-        # 設置用戶狀態，等待輸入金額
-        user_states[user_id] = {
-            'waiting_for': 'amount',
-            'type': transaction_type,
-            'category': category
-        }
-        
-    elif action == 'keypad':
-        # 此功能已移除，但保留向後兼容性
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        response = FlexMessageService.create_amount_input(transaction_type, category)
-        
-        # 設置用戶狀態，等待輸入金額
-        user_states[user_id] = {
-            'waiting_for': 'amount',
-            'type': transaction_type,
-            'category': category
-        }
-    
-    elif action == 'amount':
-        # 選擇了金額，顯示帳戶選擇
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        amount = int(parsed_data.get('amount'))
-        response = FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
-    
-    elif action == 'account':
-        # 選擇了帳戶，顯示備註輸入
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        amount = int(parsed_data.get('amount'))
-        account = parsed_data.get('account')
-        response = FlexMessageService.create_note_input(transaction_type, category, amount, account)
-    
-    elif action == 'new_account':
-        # 等待用戶輸入新帳戶名稱
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category', None)
-        amount = parsed_data.get('amount', None)
-        if amount:
-            amount = int(amount)
-        
-        user_states[user_id] = {
-            'waiting_for': 'new_account',
-            'type': transaction_type,
-            'category': category,
-            'amount': amount
-        }
-        response = TextSendMessage(text="請輸入新帳戶名稱：")
-    
-    elif action == 'finish':
-        # 完成記帳
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        amount = int(parsed_data.get('amount'))
-        account = parsed_data.get('account')
-        note = parsed_data.get('note', None)
-        
-        # 添加交易記錄
-        is_expense = transaction_type == 'expense'
-        FinanceService.add_transaction(
-            user_id=user_id,
-            amount=amount,
-            category_name=category,
-            note=note,
-            account_name=account,
-            is_expense=is_expense
-        )
-        
-        # 返回確認訊息
-        response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, note)
-    
-    elif action == 'back_to_category':
-        # 返回類別選擇
-        transaction_type = parsed_data.get('type')
-        response = FlexMessageService.create_category_selection(user_id, transaction_type)
-    
-    elif action == 'back_to_amount':
-        # 返回金額輸入
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        response = FlexMessageService.create_amount_input(transaction_type, category)
-    
-    elif action == 'back_to_account':
-        # 返回帳戶選擇
-        transaction_type = parsed_data.get('type')
-        category = parsed_data.get('category')
-        amount = int(parsed_data.get('amount'))
-        response = FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
-    
-    elif action == 'transfer_from':
-        # 選擇了轉出帳戶，處理轉帳邏輯
-        # 此處省略轉帳邏輯的實現，可以按照類似記帳的流程來實現
-        response = TextSendMessage(text="轉帳功能正在開發中...")
-    
-    else:
-        # 未知的 action
-        response = TextSendMessage(text="未知的操作，請重試。")
-    
-    # 回覆訊息
-    if isinstance(response, FlexSendMessage) or isinstance(response, TextSendMessage):
-        line_bot_api.reply_message(event.reply_token, response)
-    else:
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+    except Exception as e:
+        logger.error(f"處理 Postback 時發生錯誤: {str(e)}")
+        return "處理您的請求時發生錯誤，請稍後再試。"
 
 def create_app(test_config=None):
     """創建 Flask 應用"""
