@@ -17,6 +17,7 @@ RUN mkdir -p data && chmod -R 755 data
 # 設置環境變數
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
+ENV LOG_LEVEL=INFO
 
 # 暴露端口
 EXPOSE 8080
