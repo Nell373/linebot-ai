@@ -7,11 +7,16 @@ import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 from message_handler import create_app
+from api_routes import register_api_routes
 
 # 獲取當前環境
 env = os.environ.get('FLASK_ENV', 'development')
 app = create_app()
+
+# 啟用 CORS 以允許 PWA 訪問 API
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # 定義資料庫檔案路徑
 # 使用持久化存儲目錄來存儲數據庫文件
@@ -33,6 +38,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 from models import db
 db.init_app(app)
 migrate = Migrate(app, db)
+
+# 註冊 API 路由
+register_api_routes(app)
 
 # 設置日誌
 logging.basicConfig(

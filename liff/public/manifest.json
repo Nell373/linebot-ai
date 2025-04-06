@@ -1,0 +1,35 @@
+{
+  "short_name": "Kimi任務",
+  "name": "Kimi任務管理",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FFC940",
+  "background_color": "#FFFBE6",
+  "orientation": "portrait",
+  "description": "高效的任務創建和管理工具，幫助您隨時隨地管理您的待辦事項",
+  "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "type": "image/png",
+      "sizes": "540x1200"
+    }
+  ]
+} 
