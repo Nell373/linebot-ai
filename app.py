@@ -13,10 +13,19 @@ from message_handler import create_app
 env = os.environ.get('FLASK_ENV', 'development')
 app = create_app()
 
+# 定義資料庫檔案路徑
+# 使用持久化存儲目錄來存儲數據庫文件
+data_dir = os.path.join(os.getcwd(), 'data')
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+    
+db_path = os.path.join(data_dir, 'finances.db')
+database_url = f'sqlite:///{db_path}'
+
 # 配置數據庫
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL', 
-    'sqlite:///finances.db'
+    database_url
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -42,7 +51,7 @@ with app.app_context():
         
         # 創建數據庫表（如果不存在）
         db.create_all()
-        logger.info("數據庫表創建或已存在")
+        logger.info(f"數據庫表創建或已存在，數據庫文件位置: {db_path}")
     except Exception as e:
         logger.error(f"初始化過程中發生錯誤: {str(e)}")
 

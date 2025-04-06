@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 複製應用代碼
 COPY . .
 
-# 創建資料目錄
-RUN mkdir -p data && chmod -R 755 data
+# 創建資料目錄並設置權限
+RUN mkdir -p data && chmod -R 777 data
+
+# 設置啟動腳本權限
+RUN chmod +x start.sh
 
 # 設置環境變數
 ENV PORT=8080
@@ -23,4 +26,4 @@ ENV LOG_LEVEL=INFO
 EXPOSE 8080
 
 # 啟動命令
-CMD gunicorn --bind 0.0.0.0:$PORT app:app 
+CMD ["./start.sh"] 
