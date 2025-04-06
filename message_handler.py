@@ -14,6 +14,7 @@ from linebot.models import (
     TextComponent, ButtonComponent, MessageAction,
     PostbackEvent, PostbackAction
 )
+from datetime import datetime, timedelta
 
 # 導入服務模組
 from services.finance_service import FinanceService
@@ -74,7 +75,7 @@ def process_message(event):
                     return "請輸入有效的數字金額。"
         
         # 處理特殊命令
-        if message_text.lower() == 'flex':
+        if message_text.lower() == 'kiwi':
             # 顯示 Flex 記帳選單
             return FlexMessageService.create_main_menu()
         
@@ -207,7 +208,7 @@ def get_help_text():
         "記錄收入：收入5000 薪資",
         "查詢記錄：今天 或 本週 或 本月",
         "查看統計：月報 或 月報2023-5",
-        "互動記帳：輸入 flex 啟動互動式記帳",
+        "互動記帳：輸入 kiwi 啟動互動式記帳",
         "",
         "=== 筆記功能 ===",
         "添加筆記：筆記 標題\n內容 #標籤1 #標籤2",
@@ -371,6 +372,31 @@ def handle_postback(event):
         user_id = event.source.user_id
         postback_data = event.postback.data
         logger.info(f"收到 Postback: {postback_data} 從用戶: {user_id}")
+        
+        # 防止重複處理同一個請求
+        # 使用 user_id + postback_data 作為唯一鍵
+        request_key = f"{user_id}:{postback_data}"
+        
+        # 檢查處理請求歷史（使用模組級別的字典）
+        if not hasattr(handle_postback, 'processed_requests'):
+            handle_postback.processed_requests = {}
+            
+        # 如果是短時間內的重複請求，則忽略
+        current_time = datetime.now()
+        if request_key in handle_postback.processed_requests:
+            last_process_time = handle_postback.processed_requests[request_key]
+            # 如果距離上次處理相同請求的時間不足3秒，視為重複請求
+            if (current_time - last_process_time).total_seconds() < 3:
+                logger.warning(f"檢測到重複請求: {request_key}，已忽略")
+                return
+        
+        # 記錄當前請求的處理時間
+        handle_postback.processed_requests[request_key] = current_time
+        
+        # 清理過期的請求記錄（保留最近10分鐘的記錄）
+        expired_time = current_time - timedelta(minutes=10)
+        handle_postback.processed_requests = {k: v for k, v in handle_postback.processed_requests.items() 
+                                             if v > expired_time}
         
         # 解析 postback 數據
         params = dict(urllib.parse.parse_qsl(postback_data))
