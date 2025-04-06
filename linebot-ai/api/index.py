@@ -1,5 +1,4 @@
-from http.server import BaseHTTPRequestHandler
-import json
+from flask import Flask, request, abort, jsonify, Response
 import os
 import logging
 from linebot import LineBotApi, WebhookHandler
@@ -13,56 +12,52 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# 初始化 Flask 應用
+app = Flask(__name__)
+
 # 初始化 LINE Bot API
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        logger.info(f"GET request to {self.path}")
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write('LINE Bot is running!'.encode())
-        return
+@app.route('/', methods=['GET'])
+def home():
+    logger.info("Home route accessed")
+    return Response('LINE Bot is running!', status=200)
 
-    def do_POST(self):
-        logger.info(f"POST request to {self.path}")
-        
-        # 檢查環境變數
-        if not os.environ.get('LINE_CHANNEL_SECRET') or not os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'):
-            logger.error("Missing environment variables")
-            self.send_response(500)
-            self.end_headers()
-            return
+@app.route('/api/webhook', methods=['GET'])
+def webhook_get():
+    logger.info("Webhook GET route accessed")
+    return Response('Webhook endpoint is active', status=200)
 
-        # 獲取 X-Line-Signature 標頭值
-        signature = self.headers.get('X-Line-Signature', '')
-        if not signature:
-            logger.error("Missing X-Line-Signature header")
-            self.send_response(400)
-            self.end_headers()
-            return
+@app.route('/api/webhook', methods=['POST'])
+def webhook_post():
+    logger.info("Webhook POST route accessed")
+    
+    # 檢查環境變數
+    if not os.environ.get('LINE_CHANNEL_SECRET') or not os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'):
+        logger.error("Missing environment variables")
+        abort(500)
 
-        # 獲取請求內容
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length).decode('utf-8')
-        logger.info(f"Request body: {body}")
+    # 獲取 X-Line-Signature 標頭值
+    signature = request.headers.get('X-Line-Signature', '')
+    if not signature:
+        logger.error("Missing X-Line-Signature header")
+        abort(400)
 
-        try:
-            handler.handle(body, signature)
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write('OK'.encode())
-        except InvalidSignatureError:
-            logger.error("Invalid signature")
-            self.send_response(400)
-            self.end_headers()
-        except Exception as e:
-            logger.error(f"Error handling webhook: {str(e)}", exc_info=True)
-            self.send_response(500)
-            self.end_headers()
-        return
+    # 獲取請求內容
+    body = request.get_data(as_text=True)
+    logger.info(f"Request body: {body}")
+
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        logger.error("Invalid signature")
+        abort(400)
+    except Exception as e:
+        logger.error(f"Error handling webhook: {str(e)}", exc_info=True)
+        abort(500)
+
+    return Response('OK', status=200)
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
@@ -93,4 +88,7 @@ def handle_message(event):
             )
             logger.info("Error message sent successfully")
         except Exception as reply_error:
-            logger.error(f"Error sending error message: {str(reply_error)}", exc_info=True) 
+            logger.error(f"Error sending error message: {str(reply_error)}", exc_info=True)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080))) 

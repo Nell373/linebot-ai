@@ -4,17 +4,9 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "api/webhook/index.py",
-      "use": "@vercel/python"
     }
   ],
   "routes": [
-    {
-      "src": "/api/webhook",
-      "dest": "api/webhook/index.py"
-    },
     {
       "src": "/(.*)",
       "dest": "api/index.py"
