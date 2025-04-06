@@ -4,18 +4,21 @@
 """
 import os
 import logging
+import urllib.parse
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
     FlexSendMessage, BubbleContainer, BoxComponent,
-    TextComponent, ButtonComponent, MessageAction
+    TextComponent, ButtonComponent, MessageAction,
+    PostbackEvent, PostbackAction
 )
 
 # 導入服務模組
 from services.finance_service import FinanceService
 from services.note_service import NoteService
+from services.flex_message_service import FlexMessageService
 
 # 設置日誌
 logging.basicConfig(
@@ -28,6 +31,9 @@ logger = logging.getLogger(__name__)
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', ''))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET', ''))
 
+# 用於暫存用戶的輸入狀態
+user_states = {}
+
 def process_message(event):
     """處理收到的訊息"""
     try:
@@ -35,7 +41,31 @@ def process_message(event):
         message_text = event.message.text
         logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
         
-        # 處理幫助命令
+        # 檢查用戶是否處於特定狀態（例如等待輸入金額）
+        if user_id in user_states:
+            state = user_states[user_id]
+            if state.get('waiting_for') == 'amount':
+                # 用戶正在輸入金額
+                try:
+                    amount = int(message_text)
+                    return handle_amount_input(user_id, amount, state)
+                except ValueError:
+                    return "請輸入有效的數字金額。"
+            elif state.get('waiting_for') == 'note':
+                # 用戶正在輸入備註
+                return handle_note_input(user_id, message_text, state)
+            elif state.get('waiting_for') == 'custom_category':
+                # 用戶正在輸入自定義類別
+                return handle_custom_category(user_id, message_text, state)
+            elif state.get('waiting_for') == 'new_account':
+                # 用戶正在輸入新帳戶名稱
+                return handle_new_account(user_id, message_text, state)
+        
+        # 處理特殊命令
+        if message_text.lower() == 'flex':
+            # 顯示 Flex 記帳選單
+            return FlexMessageService.create_main_menu()
+        
         if message_text.lower() in ['help', '幫助', '說明']:
             return handle_help_command(user_id)
         
@@ -60,6 +90,98 @@ def process_message(event):
         logger.error(f"處理訊息時發生錯誤: {str(e)}")
         return "處理您的請求時發生錯誤，請稍後再試。"
 
+def handle_amount_input(user_id, amount, state):
+    """處理用戶輸入的金額"""
+    transaction_type = state.get('type')
+    category = state.get('category')
+    
+    # 清除用戶狀態
+    del user_states[user_id]
+    
+    # 繼續到帳戶選擇
+    return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+
+def handle_note_input(user_id, note, state):
+    """處理用戶輸入的備註"""
+    transaction_type = state.get('type')
+    category = state.get('category')
+    amount = state.get('amount')
+    account = state.get('account')
+    
+    # 清除用戶狀態
+    del user_states[user_id]
+    
+    # 添加交易記錄
+    is_expense = transaction_type == 'expense'
+    response = FinanceService.add_transaction(
+        user_id=user_id,
+        amount=amount,
+        category_name=category,
+        note=note,
+        account_name=account,
+        is_expense=is_expense
+    )
+    
+    # 返回確認訊息
+    return FlexMessageService.create_confirmation(transaction_type, category, amount, account, note)
+
+def handle_custom_category(user_id, category_name, state):
+    """處理用戶輸入的自定義類別"""
+    transaction_type = state.get('type')
+    is_expense = transaction_type == 'expense'
+    
+    # 添加類別到資料庫
+    from models import db, Category
+    new_category = Category(
+        user_id=user_id,
+        name=category_name,
+        icon="📝" if is_expense else "💴",
+        is_expense=is_expense
+    )
+    db.session.add(new_category)
+    db.session.commit()
+    
+    # 清除用戶狀態
+    del user_states[user_id]
+    
+    # 繼續到金額輸入
+    return FlexMessageService.create_amount_input(transaction_type, category_name)
+
+def handle_new_account(user_id, account_name, state):
+    """處理用戶輸入的新帳戶名稱"""
+    # 添加帳戶到資料庫
+    from models import db, Account
+    new_account = Account(
+        user_id=user_id,
+        name=account_name,
+        balance=0,
+        currency="TWD",
+        account_type="cash"
+    )
+    db.session.add(new_account)
+    db.session.commit()
+    
+    # 檢查狀態類型
+    if state.get('type') == 'transfer':
+        # 如果是轉帳，返回轉帳選單
+        del user_states[user_id]
+        return FlexMessageService.create_transfer_menu(user_id)
+    else:
+        # 繼續交易流程
+        transaction_type = state.get('type')
+        category = state.get('category')
+        amount = state.get('amount')
+        
+        # 清除用戶狀態
+        del user_states[user_id]
+        
+        if amount:
+            # 如果已有金額，顯示帳戶選擇
+            return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+        else:
+            # 如果在類別選擇階段添加帳戶，返回主選單
+            return FlexMessageService.create_main_menu()
+
 def handle_help_command(user_id):
     """處理幫助命令，返回使用說明"""
     return get_help_text()
@@ -73,6 +195,7 @@ def get_help_text():
         "記錄收入：收入5000 薪資",
         "查詢記錄：今天 或 本週 或 本月",
         "查看統計：月報 或 月報2023-5",
+        "互動記帳：輸入 flex 啟動互動式記帳",
         "",
         "=== 筆記功能 ===",
         "添加筆記：筆記 標題\n內容 #標籤1 #標籤2",
@@ -214,6 +337,168 @@ def handle_message(event):
     
     # 檢查是否為 FlexSendMessage 類型
     if isinstance(response, FlexSendMessage):
+        line_bot_api.reply_message(event.reply_token, response)
+    else:
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    """處理 Postback 事件"""
+    user_id = event.source.user_id
+    data = event.postback.data
+    logger.info(f"Postback: {data} 從用戶: {user_id}")
+    
+    # 解析 postback 數據
+    parsed_data = {}
+    for pair in data.split('&'):
+        key, value = pair.split('=')
+        parsed_data[key] = urllib.parse.unquote(value)
+    
+    action = parsed_data.get('action')
+    
+    if action == 'main_menu':
+        # 顯示主選單
+        response = FlexMessageService.create_main_menu()
+    
+    elif action == 'record':
+        # 開始記帳流程，顯示類別選擇
+        transaction_type = parsed_data.get('type')
+        if transaction_type == 'transfer':
+            response = FlexMessageService.create_transfer_menu(user_id)
+        else:
+            response = FlexMessageService.create_category_selection(user_id, transaction_type)
+    
+    elif action == 'category':
+        # 選擇了類別，顯示金額輸入
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        response = FlexMessageService.create_amount_input(transaction_type, category)
+    
+    elif action == 'custom_category':
+        # 等待用戶輸入自定義類別
+        transaction_type = parsed_data.get('type')
+        user_states[user_id] = {
+            'waiting_for': 'custom_category',
+            'type': transaction_type
+        }
+        response = TextSendMessage(text="請輸入自定義類別名稱：")
+    
+    elif action == 'keypad':
+        # 處理數字鍵盤輸入
+        key = parsed_data.get('key')
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        
+        current_amount = user_states.get(user_id, {}).get('current_amount', '')
+        
+        if key == 'backspace':
+            # 刪除最後一個字符
+            if current_amount:
+                current_amount = current_amount[:-1]
+        else:
+            # 添加數字
+            current_amount += key
+        
+        # 更新用戶狀態
+        if not current_amount:
+            # 如果金額為空，返回數字鍵盤
+            user_states[user_id] = {
+                'current_amount': '',
+                'type': transaction_type,
+                'category': category
+            }
+            response = FlexMessageService.create_amount_input(transaction_type, category)
+        else:
+            # 顯示當前輸入的金額
+            user_states[user_id] = {
+                'current_amount': current_amount,
+                'type': transaction_type,
+                'category': category
+            }
+            response = TextSendMessage(text=f"當前金額: ${current_amount}\n請繼續輸入或發送完整金額以繼續")
+    
+    elif action == 'amount':
+        # 選擇了金額，顯示帳戶選擇
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        amount = int(parsed_data.get('amount'))
+        response = FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+    
+    elif action == 'account':
+        # 選擇了帳戶，顯示備註輸入
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        amount = int(parsed_data.get('amount'))
+        account = parsed_data.get('account')
+        response = FlexMessageService.create_note_input(transaction_type, category, amount, account)
+    
+    elif action == 'new_account':
+        # 等待用戶輸入新帳戶名稱
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category', None)
+        amount = parsed_data.get('amount', None)
+        if amount:
+            amount = int(amount)
+        
+        user_states[user_id] = {
+            'waiting_for': 'new_account',
+            'type': transaction_type,
+            'category': category,
+            'amount': amount
+        }
+        response = TextSendMessage(text="請輸入新帳戶名稱：")
+    
+    elif action == 'finish':
+        # 完成記帳
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        amount = int(parsed_data.get('amount'))
+        account = parsed_data.get('account')
+        note = parsed_data.get('note', None)
+        
+        # 添加交易記錄
+        is_expense = transaction_type == 'expense'
+        FinanceService.add_transaction(
+            user_id=user_id,
+            amount=amount,
+            category_name=category,
+            note=note,
+            account_name=account,
+            is_expense=is_expense
+        )
+        
+        # 返回確認訊息
+        response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, note)
+    
+    elif action == 'back_to_category':
+        # 返回類別選擇
+        transaction_type = parsed_data.get('type')
+        response = FlexMessageService.create_category_selection(user_id, transaction_type)
+    
+    elif action == 'back_to_amount':
+        # 返回金額輸入
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        response = FlexMessageService.create_amount_input(transaction_type, category)
+    
+    elif action == 'back_to_account':
+        # 返回帳戶選擇
+        transaction_type = parsed_data.get('type')
+        category = parsed_data.get('category')
+        amount = int(parsed_data.get('amount'))
+        response = FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+    
+    elif action == 'transfer_from':
+        # 選擇了轉出帳戶，處理轉帳邏輯
+        # 此處省略轉帳邏輯的實現，可以按照類似記帳的流程來實現
+        response = TextSendMessage(text="轉帳功能正在開發中...")
+    
+    else:
+        # 未知的 action
+        response = TextSendMessage(text="未知的操作，請重試。")
+    
+    # 回覆訊息
+    if isinstance(response, FlexSendMessage) or isinstance(response, TextSendMessage):
         line_bot_api.reply_message(event.reply_token, response)
     else:
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
