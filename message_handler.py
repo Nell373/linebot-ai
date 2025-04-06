@@ -188,16 +188,16 @@ def process_message(event):
                     else:
                         task_info['reminder_time'] = '明天早上9點'
                     
-                    # 創建提醒
-                    from models import db, Reminder
-                    import datetime
-                    
                     # 嘗試解析時間
                     now = datetime.datetime.now()
                     reminder_time = now + datetime.timedelta(days=1)  # 默認為明天
+                    hour = 9  # 默認為早上9點
+                    minute = 0
                     
                     # 簡單處理一些常見的時間表達
                     time_text = task_info['reminder_time']
+                    
+                    # 處理日期部分
                     if '今天' in time_text:
                         reminder_time = now
                     elif '明天' in time_text:
@@ -205,7 +205,106 @@ def process_message(event):
                     elif '後天' in time_text:
                         reminder_time = now + datetime.timedelta(days=2)
                     
+                    # 處理時間部分
+                    if '早上' in time_text or '上午' in time_text:
+                        # 處理具體時間，如「早上8點」、「早上9點半」
+                        hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                        if hour_match:
+                            hour = int(hour_match.group(1))
+                            # 確保早上的時間在上午
+                            if hour >= 1 and hour <= 12:
+                                # 如果是12點，特殊處理為中午12點
+                                if hour == 12:
+                                    hour = 12
+                                else:
+                                    # 其他時間保持不變
+                                    pass
+                        else:
+                            hour = 9  # 默認早上9點
+                        
+                        # 檢查是否有分鐘
+                        minute_match = re.search(r'([0-9]+)分', time_text)
+                        if minute_match:
+                            minute = int(minute_match.group(1))
+                        elif '半' in time_text:
+                            minute = 30
+                    
+                    elif '下午' in time_text or '傍晚' in time_text:
+                        hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                        if hour_match:
+                            hour = int(hour_match.group(1))
+                            # 將下午的時間轉換為24小時制
+                            if hour >= 1 and hour <= 12:
+                                # 如果是12點，就是中午12點
+                                if hour == 12:
+                                    hour = 12
+                                else:
+                                    hour += 12  # 其他時間加12
+                        else:
+                            hour = 15  # 默認下午3點
+                        
+                        # 檢查是否有分鐘
+                        minute_match = re.search(r'([0-9]+)分', time_text)
+                        if minute_match:
+                            minute = int(minute_match.group(1))
+                        elif '半' in time_text:
+                            minute = 30
+                    
+                    elif '晚上' in time_text or '夜晚' in time_text:
+                        hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                        if hour_match:
+                            hour = int(hour_match.group(1))
+                            # 將晚上的時間轉換為24小時制
+                            if hour >= 1 and hour <= 12:
+                                # 如果是12點，就是午夜0點
+                                if hour == 12:
+                                    hour = 0
+                                else:
+                                    hour += 12  # 其他時間加12
+                        else:
+                            hour = 20  # 默認晚上8點
+                        
+                        # 檢查是否有分鐘
+                        minute_match = re.search(r'([0-9]+)分', time_text)
+                        if minute_match:
+                            minute = int(minute_match.group(1))
+                        elif '半' in time_text:
+                            minute = 30
+                    
+                    else:
+                        # 嘗試直接解析具體時間，如「9點」、「14:30」
+                        hour_minute_match = re.search(r'(\d+):(\d+)', time_text)
+                        if hour_minute_match:
+                            hour = int(hour_minute_match.group(1))
+                            minute = int(hour_minute_match.group(2))
+                        else:
+                            hour_match = re.search(r'([0-9]+)[點時]', time_text)
+                            if hour_match:
+                                hour = int(hour_match.group(1))
+                                # 上下文判斷：如果沒有明確指定上午/下午，根據時間判斷
+                                if hour >= 0 and hour <= 5:  # 凌晨
+                                    pass  # 已經是24小時制
+                                elif hour >= 6 and hour <= 12:  # 早上
+                                    pass  # 已經是正確的早上時間
+                                elif hour >= 13 and hour <= 23:  # 下午/晚上
+                                    pass  # 已經是24小時制
+                                
+                                # 檢查是否有分鐘
+                                minute_match = re.search(r'([0-9]+)分', time_text)
+                                if minute_match:
+                                    minute = int(minute_match.group(1))
+                                elif '半' in time_text:
+                                    minute = 30
+                    
+                    # 設置提醒時間的小時和分鐘
+                    reminder_time = reminder_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    logger.info(f"設置提醒時間: {reminder_time.strftime('%Y-%m-%d %H:%M')}, 原始時間文本: {time_text}")
+                    
                     # 創建提醒
+                    from models import db, Reminder
+                    import datetime
+                    
+                    # 創建新任務
                     new_reminder = Reminder(
                         user_id=user_id,
                         content=task_info['name'],
@@ -213,13 +312,17 @@ def process_message(event):
                         repeat_type='none',
                         is_completed=False
                     )
+                    
                     db.session.add(new_reminder)
                     db.session.commit()
+                    
+                    # 構建任務摘要
+                    task_summary = f"✅ 已創建新任務\n\n📌 {task_info['name']}\n⏰ {reminder_time.strftime('%Y-%m-%d %H:%M')}"
                     
                     # 清除用戶狀態
                     del user_states[user_id]
                     
-                    return f"已創建任務: {task_info['name']}\n提醒時間: {reminder_time.strftime('%Y-%m-%d %H:%M')}"
+                    return task_summary
                     
                 except Exception as e:
                     logger.error(f"處理任務詳情時出錯: {str(e)}")
@@ -533,40 +636,11 @@ def process_task_from_liff(user_id, task_data):
         # 保存任務到數據庫（這裡可以添加保存到你的 Task 模型的代碼）
         from models import db, Reminder
         
-        # 處理提醒時間字符串
-        reminder_date_time = None
-        try:
-            if reminder_date == "今天":
-                reminder_date_time = datetime.utcnow()
-            elif reminder_date == "明天":
-                reminder_date_time = datetime.utcnow() + timedelta(days=1)
-            elif reminder_date == "每週一三五":
-                # 這裡只是一個例子，實際應用中可能需要更複雜的處理
-                reminder_date_time = datetime.utcnow()
-            elif reminder_date.startswith("2"):  # 假設是 YYYY-MM-DD 格式
-                reminder_date_time = datetime.strptime(reminder_date, "%Y-%m-%d")
-            else:
-                reminder_date_time = datetime.utcnow()
-                
-            # 處理時間部分
-            if reminder_time == "早上":
-                reminder_date_time = reminder_date_time.replace(hour=9, minute=0, second=0)
-            elif reminder_time == "下午":
-                reminder_date_time = reminder_date_time.replace(hour=14, minute=0, second=0)
-            elif reminder_time == "晚上":
-                reminder_date_time = reminder_date_time.replace(hour=20, minute=0, second=0)
-            elif ":" in reminder_time:  # 自訂時間，格式如 "14:30"
-                hours, minutes = map(int, reminder_time.split(":", 1))
-                reminder_date_time = reminder_date_time.replace(hour=hours, minute=minutes, second=0)
-        except Exception as e:
-            logger.error(f"處理提醒時間出錯: {str(e)}")
-            reminder_date_time = datetime.utcnow()
-        
         # 創建新任務
         new_reminder = Reminder(
             user_id=user_id,
             content=task_name,
-            reminder_time=reminder_date_time,
+            reminder_time=reminder_time,
             repeat_type=repeat_cycle,
             is_completed=False
         )
