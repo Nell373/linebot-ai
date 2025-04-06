@@ -124,13 +124,17 @@ class FinanceService:
             if not account:
                 account = Account.query.filter_by(user_id=user_id, name="默認").first()
             
+            # 獲取當前的 UTC 時間並轉換為台灣時區 (UTC+8)
+            utc_now = datetime.utcnow()
+            taiwan_time = utc_now + timedelta(hours=8)
+            
             # 創建交易記錄
             transaction = Transaction(
                 user_id=user_id,
                 amount=amount,
                 category_id=category.id,
                 account_id=account.id,
-                transaction_date=datetime.utcnow(),
+                transaction_date=taiwan_time,
                 note=note,
                 is_expense=is_expense
             )
@@ -161,21 +165,24 @@ class FinanceService:
     def get_transactions(user_id, period="today"):
         """獲取用戶的交易記錄"""
         try:
-            # 設置時間範圍
-            now = datetime.utcnow()
+            # 設置時間範圍，並轉換為台灣時區（UTC+8）
+            utc_now = datetime.utcnow()
+            now = utc_now + timedelta(hours=8)
+            
             if period == "today":
-                start_date = datetime(now.year, now.month, now.day)
+                start_date = datetime(now.year, now.month, now.day) - timedelta(hours=8)  # 轉回UTC以匹配數據庫
                 period_text = "今天"
             elif period == "yesterday":
                 yesterday = now - timedelta(days=1)
-                start_date = datetime(yesterday.year, yesterday.month, yesterday.day)
+                start_date = datetime(yesterday.year, yesterday.month, yesterday.day) - timedelta(hours=8)
                 period_text = "昨天"
             elif period == "week":
-                start_date = now - timedelta(days=now.weekday())
-                start_date = datetime(start_date.year, start_date.month, start_date.day)
+                # 獲取本週一的日期
+                monday = now - timedelta(days=now.weekday())
+                start_date = datetime(monday.year, monday.month, monday.day) - timedelta(hours=8)
                 period_text = "本週"
             elif period == "month":
-                start_date = datetime(now.year, now.month, 1)
+                start_date = datetime(now.year, now.month, 1) - timedelta(hours=8)
                 period_text = "本月"
             else:
                 return "無效的時間範圍，請使用：今天、昨天、本週、本月"
@@ -207,7 +214,9 @@ class FinanceService:
                 category_icon = category.icon if category else "📝"
                 
                 transaction_type = "支出" if transaction.is_expense else "收入"
-                date_str = transaction.transaction_date.strftime("%m-%d %H:%M")
+                # 轉換交易時間為台灣時間
+                taiwan_date = transaction.transaction_date + timedelta(hours=8)
+                date_str = taiwan_date.strftime("%m-%d %H:%M")
                 
                 transaction_text = f"{date_str} {category_icon} {category_name} ${transaction.amount} ({transaction_type})"
                 if transaction.note:
@@ -225,17 +234,18 @@ class FinanceService:
     def get_monthly_summary(user_id, year=None, month=None):
         """獲取月度匯總報告"""
         try:
-            # 如果未指定年月，使用當前月份
-            now = datetime.utcnow()
+            # 如果未指定年月，使用當前月份（台灣時間）
+            utc_now = datetime.utcnow()
+            now = utc_now + timedelta(hours=8)
             year = year or now.year
             month = month or now.month
             
-            # 設置時間範圍
-            start_date = datetime(year, month, 1)
+            # 設置時間範圍（轉換回UTC時間以匹配數據庫）
+            start_date = datetime(year, month, 1) - timedelta(hours=8)
             if month == 12:
-                end_date = datetime(year + 1, 1, 1)
+                end_date = datetime(year + 1, 1, 1) - timedelta(hours=8)
             else:
-                end_date = datetime(year, month + 1, 1)
+                end_date = datetime(year, month + 1, 1) - timedelta(hours=8)
             
             # 查詢該月的交易記錄
             transactions = Transaction.query.filter(

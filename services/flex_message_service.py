@@ -3,7 +3,7 @@ Flex Message服務模組
 創建互動式記帳流程的Flex Message
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from linebot.models import (
     FlexSendMessage, BubbleContainer, BoxComponent,
     TextComponent, ButtonComponent, IconComponent,
@@ -593,14 +593,17 @@ class FlexMessageService:
                 )
             )
         
-        # 獲取當前時間
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        # 獲取當前台灣時間（UTC+8）
+        utc_now = datetime.utcnow()
+        taiwan_time = utc_now + timedelta(hours=8)
+        time_str = taiwan_time.strftime("%Y-%m-%d %H:%M")
+        
         contents.append(
             BoxComponent(
                 layout="horizontal",
                 contents=[
                     TextComponent(text="時間", size="md", color="#555555", flex=2),
-                    TextComponent(text=now, size="md", weight="bold", flex=4)
+                    TextComponent(text=time_str, size="md", weight="bold", flex=4)
                 ],
                 margin="md"
             )
