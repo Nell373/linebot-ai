@@ -43,6 +43,11 @@ def process_message(event):
         message_text = event.message.text
         logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
         
+        # 檢查是否為 kimi flex 命令
+        if message_text.lower() in ["kimi flex", "kimi主選單", "kimi 主選單", "主選單"]:
+            logger.info(f"用戶 {user_id} 請求主選單")
+            return FlexMessageService.create_main_menu()
+        
         # 檢查是否為 JSON 格式（可能是從 LIFF 應用發送的任務數據）
         if message_text.startswith('{"type":"task"') or message_text.startswith('{"type": "task"'):
             try:
