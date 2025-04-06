@@ -2,22 +2,43 @@ from http.server import BaseHTTPRequestHandler
 import os
 import json
 import logging
-import sys
-
-# 添加專案根目錄到 Python 路徑
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 # 設置日誌記錄
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 初始化 LINE Bot API
-line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', ''))
-webhook_handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET', ''))
+try:
+    from linebot import LineBotApi, WebhookHandler
+    from linebot.exceptions import InvalidSignatureError
+    from linebot.models import MessageEvent, TextMessage, TextSendMessage
+    
+    line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', ''))
+    webhook_handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET', ''))
+    logger.info("Successfully initialized LINE Bot API")
+except Exception as e:
+    logger.error(f"Error initializing LINE Bot API: {str(e)}")
+    raise
+
+# 簡易訊息處理函數
+def process_message(message_text, user_id):
+    """
+    簡化版訊息處理器，直接內嵌在 webhook.py 中
+    """
+    logger.info(f"Processing message from {user_id}: {message_text}")
+    
+    # 簡單的回應邏輯
+    if "你好" in message_text or "哈囉" in message_text:
+        return "你好！我是您的 LINE Bot 助手。"
+    
+    elif "記事" in message_text:
+        return f"記事功能測試成功！您輸入的是：{message_text}"
+    
+    elif "午餐" in message_text:
+        return "午餐預算功能測試成功！"
+    
+    else:
+        return f"我收到了您的訊息：{message_text}\n這是一個簡化版的回應，用於測試 LINE Bot 的連接狀態。"
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -64,20 +85,7 @@ def handle_message(event):
         user_id = event.source.user_id
         logger.info(f"Received message from user {user_id}: {text}")
         
-        # 直接使用簡化版處理器進行測試
-        try:
-            # 嘗試導入簡化版處理器
-            from src.simplified_processor import process_message
-            logger.info("Successfully imported simplified processor")
-        except ImportError as e:
-            logger.error(f"Import error for simplified processor: {str(e)}")
-            
-            # 內建簡易處理器作為最後的回退方案
-            def process_message(msg, uid):
-                logger.info(f"Using fallback message processor for {uid}: {msg}")
-                return f"您好！我收到了您的訊息：{msg}\n(使用內建簡易處理器回應)"
-        
-        # 處理訊息，傳入使用者 ID
+        # 使用內嵌的訊息處理器
         logger.info("Calling process_message function")
         response = process_message(text, user_id)
         logger.info(f"Generated response: {response}")
