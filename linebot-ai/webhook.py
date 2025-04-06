@@ -26,13 +26,18 @@ line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
 @app.route("/", methods=['GET'])
-@app.route("/api/webhook", methods=['GET'])
 def home():
+    logger.info("Home route accessed")
     return Response('LINE Bot is running!', status=200)
+
+@app.route("/api/webhook", methods=['GET'])
+def webhook_get():
+    logger.info("Webhook GET route accessed")
+    return Response('Webhook endpoint is active', status=200)
 
 @app.route("/api/webhook", methods=['POST'])
 def callback():
-    logger.info("Received webhook request")
+    logger.info("Received webhook POST request")
     
     # 檢查環境變數
     channel_secret = os.environ.get('LINE_CHANNEL_SECRET')
