@@ -1,6 +1,16 @@
 """
 Flex Message服務模組
 創建互動式記帳流程的Flex Message
+
+色彩方案：
+🌟 主色 Primary：#FFC940 - 用於主按鈕、高亮區、品牌識別主色
+🌞 輔助亮黃：#FFE58F - 用於 hover 狀態、背景滑過區域
+🍋 強調亮點黃：#FAAD14 - 用於 icon 點綴、高注意力元素
+⚪ 背景色：#FFFFFF - 清爽主背景
+🟡 淡黃背景區塊：#FFFBE6 - 卡片、模組背景
+🩶 主文字色：#595959 - 內文標題、主要資訊文字
+⚪ 次要文字色：#8C8C8C - 備註、說明、次層資訊
+⬜ 邊框用灰：#D9D9D9 - 輸入框、卡片、表格邊線、分隔線
 """
 import logging
 from datetime import datetime, timedelta
@@ -22,30 +32,30 @@ class FlexMessageService:
         bubble = BubbleContainer(
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     TextComponent(
                         text="Kimi 助手",
                         weight="bold",
                         size="xl",
                         align="center",
-                        color="#5D4037"  # 深褐色文字
+                        color="#595959"  # 主文字色
                     ),
                     TextComponent(
                         text="請選擇功能",
                         size="md",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="md"
                     ),
-                    SeparatorComponent(margin="xl", color="#D7CCC8"),  # 淺褐色分隔線
+                    SeparatorComponent(margin="xl", color="#D9D9D9"),  # 邊框用灰
                     BoxComponent(
                         layout="horizontal",
                         margin="md",
                         contents=[
                             ButtonComponent(
                                 style="primary",
-                                color="#FFB74D",  # 橙黃色按鈕
+                                color="#FFC940",  # 主色 Primary
                                 action=PostbackAction(
                                     label="記帳",
                                     display_text="記帳",
@@ -56,7 +66,7 @@ class FlexMessageService:
                             ),
                             ButtonComponent(
                                 style="primary",
-                                color="#EF6C00",  # 深橙色按鈕
+                                color="#FAAD14",  # 強調亮點黃
                                 action=PostbackAction(
                                     label="任務",
                                     display_text="任務管理",
@@ -74,7 +84,7 @@ class FlexMessageService:
                         contents=[
                             ButtonComponent(
                                 style="secondary",
-                                color="#F9A825",  # 金黃色按鈕
+                                color="#FFC940",  # 主色 Primary
                                 action=PostbackAction(
                                     label="記錄查詢",
                                     display_text="查詢記錄",
@@ -85,7 +95,7 @@ class FlexMessageService:
                             ),
                             ButtonComponent(
                                 style="secondary",
-                                color="#4CAF50",  # 綠色按鈕
+                                color="#FAAD14",  # 強調亮點黃
                                 action=MessageAction(
                                     label="月度報表",
                                     text="月報"
@@ -183,7 +193,7 @@ class FlexMessageService:
                         width="33%",
                         cornerRadius="md",
                         paddingAll="8px",
-                        backgroundColor="#FFF8DC"  # 淡黃色背景
+                        backgroundColor="#FFFBE6"  # 淡黃背景區塊
                     )
                 )
             
@@ -191,7 +201,7 @@ class FlexMessageService:
         
         # 創建Flex Message
         type_text = "支出" if is_expense else "收入"
-        type_color = "#EF6C00" if is_expense else "#FFB74D"  # 深橙色/橙黃色
+        type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
         bubble = BubbleContainer(
             header=BoxComponent(
@@ -210,11 +220,11 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=grouped_categories + [
                     ButtonComponent(
                         style="link",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="自定義類別",
                             display_text="創建自定義類別",
@@ -227,11 +237,11 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     ButtonComponent(
                         style="secondary",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="返回",
                             display_text="返回主選單",
@@ -253,7 +263,7 @@ class FlexMessageService:
         """創建金額輸入選單"""
         is_expense = transaction_type == "expense"
         type_text = "支出" if is_expense else "收入"
-        type_color = "#EF6C00" if is_expense else "#FFB74D"  # 深橙色/橙黃色
+        type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
         bubble = BubbleContainer(
             header=BoxComponent(
@@ -279,26 +289,26 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     TextComponent(
                         text="請直接輸入金額數字",
                         size="md",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="md"
                     ),
                     TextComponent(
                         text="例如：150、1000、33000",
                         size="sm",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="sm"
                     ),
                     TextComponent(
                         text="或使用快速格式：早餐-50、薪資+5000",
                         size="sm",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="sm"
                     ),
@@ -311,7 +321,7 @@ class FlexMessageService:
                                 size="md", 
                                 weight="bold",
                                 align="center",
-                                color="#5D4037"  # 深褐色文字
+                                color="#595959"  # 主文字色
                             )
                         ]
                     )
@@ -319,11 +329,11 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     ButtonComponent(
                         style="secondary",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="返回",
                             display_text="返回類別選擇",
@@ -364,7 +374,7 @@ class FlexMessageService:
             account_buttons.append(
                 ButtonComponent(
                     style="primary",
-                    color="#A1887F",  # 褐色
+                    color="#8C8C8C",  # 次要文字色
                     action=PostbackAction(
                         label=account.name,
                         display_text=f"選擇帳戶：{account.name}",
@@ -377,7 +387,7 @@ class FlexMessageService:
         
         is_expense = transaction_type == "expense"
         type_text = "支出" if is_expense else "收入"
-        type_color = "#EF6C00" if is_expense else "#FFB74D"  # 深橙色/橙黃色
+        type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
         bubble = BubbleContainer(
             header=BoxComponent(
@@ -403,12 +413,12 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     TextComponent(
                         text="請選擇要使用的帳戶",
                         size="md",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="md"
                     ),
@@ -419,7 +429,7 @@ class FlexMessageService:
                     ),
                     ButtonComponent(
                         style="link",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="新增帳戶",
                             display_text="創建新帳戶",
@@ -432,11 +442,11 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     ButtonComponent(
                         style="secondary",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="返回",
                             display_text="返回金額輸入",
@@ -458,7 +468,7 @@ class FlexMessageService:
         """創建備註輸入選單"""
         is_expense = transaction_type == "expense"
         type_text = "支出" if is_expense else "收入"
-        type_color = "#EF6C00" if is_expense else "#FFB74D"  # 深橙色/橙黃色
+        type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
         quick_notes = []
         if is_expense:
@@ -527,7 +537,7 @@ class FlexMessageService:
                     TextComponent(
                         text="您可以直接輸入備註文字，或選擇下方選項",
                         size="sm",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="md"
                     ),
@@ -583,29 +593,29 @@ class FlexMessageService:
         """創建記帳完成確認訊息"""
         is_expense = transaction_type == "expense"
         type_text = "支出" if is_expense else "收入"
-        type_color = "#EF6C00" if is_expense else "#FFB74D"  # 深橙色/橙黃色
+        type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
         contents = [
             BoxComponent(
                 layout="horizontal",
                 contents=[
-                    TextComponent(text="類型", size="md", color="#8D6E63", flex=2),
-                    TextComponent(text=type_text, size="md", weight="bold", color="#5D4037", flex=4)
+                    TextComponent(text="類型", size="md", color="#8C8C8C", flex=2),
+                    TextComponent(text=type_text, size="md", weight="bold", color="#595959", flex=4)
                 ],
                 margin="md"
             ),
             BoxComponent(
                 layout="horizontal",
                 contents=[
-                    TextComponent(text="類別", size="md", color="#8D6E63", flex=2),
-                    TextComponent(text=category, size="md", weight="bold", color="#5D4037", flex=4)
+                    TextComponent(text="類別", size="md", color="#8C8C8C", flex=2),
+                    TextComponent(text=category, size="md", weight="bold", color="#595959", flex=4)
                 ],
                 margin="md"
             ),
             BoxComponent(
                 layout="horizontal",
                 contents=[
-                    TextComponent(text="金額", size="md", color="#8D6E63", flex=2),
+                    TextComponent(text="金額", size="md", color="#8C8C8C", flex=2),
                     TextComponent(
                         text=f"${amount}",
                         size="md",
@@ -619,8 +629,8 @@ class FlexMessageService:
             BoxComponent(
                 layout="horizontal",
                 contents=[
-                    TextComponent(text="帳戶", size="md", color="#8D6E63", flex=2),
-                    TextComponent(text=account, size="md", weight="bold", color="#5D4037", flex=4)
+                    TextComponent(text="帳戶", size="md", color="#8C8C8C", flex=2),
+                    TextComponent(text=account, size="md", weight="bold", color="#595959", flex=4)
                 ],
                 margin="md"
             )
@@ -631,8 +641,8 @@ class FlexMessageService:
                 BoxComponent(
                     layout="horizontal",
                     contents=[
-                        TextComponent(text="備註", size="md", color="#8D6E63", flex=2),
-                        TextComponent(text=note, size="md", weight="bold", color="#5D4037", flex=4, wrap=True)
+                        TextComponent(text="備註", size="md", color="#8C8C8C", flex=2),
+                        TextComponent(text=note, size="md", weight="bold", color="#595959", flex=4, wrap=True)
                     ],
                     margin="md"
                 )
@@ -647,8 +657,8 @@ class FlexMessageService:
             BoxComponent(
                 layout="horizontal",
                 contents=[
-                    TextComponent(text="時間", size="md", color="#8D6E63", flex=2),
-                    TextComponent(text=time_str, size="md", weight="bold", color="#5D4037", flex=4)
+                    TextComponent(text="時間", size="md", color="#8C8C8C", flex=2),
+                    TextComponent(text=time_str, size="md", weight="bold", color="#595959", flex=4)
                 ],
                 margin="md"
             )
@@ -657,7 +667,7 @@ class FlexMessageService:
         bubble = BubbleContainer(
             header=BoxComponent(
                 layout="vertical",
-                backgroundColor="#F9A825",  # 金黃色
+                backgroundColor="#FFE58F",  # 輔助亮黃
                 paddingAll="10px",
                 contents=[
                     TextComponent(
@@ -671,12 +681,12 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=contents
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     BoxComponent(
                         layout="horizontal",
@@ -694,7 +704,7 @@ class FlexMessageService:
                             ),
                             ButtonComponent(
                                 style="secondary",
-                                color="#A1887F",  # 褐色
+                                color="#8C8C8C",  # 次要文字色
                                 action=MessageAction(
                                     label="查看記錄",
                                     text="今天"
@@ -877,7 +887,7 @@ class FlexMessageService:
             category_buttons.append(
                 ButtonComponent(
                     style="secondary",
-                    color="#EF6C00",  # 深橙色
+                    color="#FAAD14",  # 強調亮點黃
                     action=PostbackAction(
                         label=f"{category.icon} {category.name}",
                         display_text=f"選擇類別：{category.name}",
@@ -893,7 +903,7 @@ class FlexMessageService:
             category_buttons.append(
                 ButtonComponent(
                     style="primary",
-                    color="#FFB74D",  # 橙黃色
+                    color="#FFC940",  # 主色 Primary
                     action=PostbackAction(
                         label=f"創建新類別 '{category_keyword}'",
                         display_text=f"創建新類別：{category_keyword}",
@@ -908,7 +918,7 @@ class FlexMessageService:
         category_buttons.append(
             ButtonComponent(
                 style="link",
-                color="#A1887F",  # 褐色
+                color="#8C8C8C",  # 次要文字色
                 action=PostbackAction(
                     label="創建新類別",
                     display_text="創建新類別",
@@ -922,7 +932,7 @@ class FlexMessageService:
         bubble = BubbleContainer(
             header=BoxComponent(
                 layout="vertical",
-                backgroundColor="#EF6C00",  # 深橙色
+                backgroundColor="#FAAD14",  # 強調亮點黃
                 paddingAll="10px",
                 contents=[
                     TextComponent(
@@ -936,16 +946,16 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     TextComponent(
                         text="請選擇支出類別",
                         size="md",
-                        color="#8D6E63",  # 褐色文字
+                        color="#8C8C8C",  # 次要文字色
                         align="center",
                         margin="md"
                     ),
-                    SeparatorComponent(margin="md", color="#D7CCC8"),  # 淺褐色分隔線
+                    SeparatorComponent(margin="md", color="#D9D9D9"),  # 邊框用灰
                     BoxComponent(
                         layout="vertical",
                         margin="md",
@@ -955,11 +965,11 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     ButtonComponent(
                         style="primary",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="取消",
                             display_text="取消記帳",
@@ -984,7 +994,7 @@ class FlexMessageService:
         # 為每筆交易創建內容
         for idx, transaction in enumerate(transactions[:10]):  # 限制顯示最近10筆，避免訊息過長
             # 設置不同的背景顏色
-            bg_color = "#FFF8E1" if idx % 2 == 0 else "#FFF3CF"
+            bg_color = "#FFFBE6" if idx % 2 == 0 else "#FFF3CF"
             
             # 交易項目
             item = BoxComponent(
@@ -1005,14 +1015,14 @@ class FlexMessageService:
                             TextComponent(
                                 text=f"{transaction['category_icon']} {transaction['category']}",
                                 size="md",
-                                color="#5D4037",
+                                color="#595959",
                                 weight="bold",
                                 flex=4
                             ),
                             TextComponent(
                                 text=f"${transaction['amount']}",
                                 size="md",
-                                color="#EF6C00" if transaction['type'] == "expense" else "#4CAF50",
+                                color="#FAAD14" if transaction['type'] == "expense" else "#FFC940",
                                 align="end",
                                 weight="bold",
                                 flex=2
@@ -1026,13 +1036,13 @@ class FlexMessageService:
                             TextComponent(
                                 text=transaction['date'],
                                 size="xs",
-                                color="#8D6E63",
+                                color="#8C8C8C",
                                 flex=2
                             ),
                             TextComponent(
                                 text=transaction['account'],
                                 size="xs",
-                                color="#8D6E63",
+                                color="#8C8C8C",
                                 align="end",
                                 flex=2
                             )
@@ -1047,7 +1057,7 @@ class FlexMessageService:
                     TextComponent(
                         text=f"備註: {transaction['note']}",
                         size="xs",
-                        color="#8D6E63",
+                        color="#8C8C8C",
                         margin="xs",
                         wrap=True
                     )
@@ -1059,7 +1069,7 @@ class FlexMessageService:
             transaction_items.append(
                 BoxComponent(
                     layout="vertical",
-                    backgroundColor="#FFF8E1",
+                    backgroundColor="#FFFBE6",
                     cornerRadius="md",
                     margin="sm",
                     paddingAll="10px",
@@ -1067,7 +1077,7 @@ class FlexMessageService:
                         TextComponent(
                             text="沒有交易記錄",
                             size="md",
-                            color="#8D6E63",
+                            color="#8C8C8C",
                             align="center"
                         )
                     ]
@@ -1077,7 +1087,7 @@ class FlexMessageService:
         bubble = BubbleContainer(
             header=BoxComponent(
                 layout="vertical",
-                backgroundColor="#F9A825",  # 金黃色
+                backgroundColor="#FFE58F",  # 輔助亮黃
                 paddingAll="10px",
                 contents=[
                     TextComponent(
@@ -1091,39 +1101,39 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFFDE7",  # 更淡的黃色
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 paddingAll="10px",
                 contents=[
                     # 總計信息
                     BoxComponent(
                         layout="vertical",
-                        backgroundColor="#FFF8E1",
+                        backgroundColor="#FFFBE6",
                         cornerRadius="md",
                         paddingAll="10px",
                         contents=[
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="總支出", size="sm", color="#8D6E63", flex=1),
-                                    TextComponent(text=f"${summary['total_expense']}", size="sm", color="#EF6C00", align="end", flex=1)
+                                    TextComponent(text="總支出", size="sm", color="#8C8C8C", flex=1),
+                                    TextComponent(text=f"${summary['total_expense']}", size="sm", color="#FAAD14", align="end", flex=1)
                                 ]
                             ),
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="總收入", size="sm", color="#8D6E63", flex=1),
-                                    TextComponent(text=f"${summary['total_income']}", size="sm", color="#4CAF50", align="end", flex=1)
+                                    TextComponent(text="總收入", size="sm", color="#8C8C8C", flex=1),
+                                    TextComponent(text=f"${summary['total_income']}", size="sm", color="#FFC940", align="end", flex=1)
                                 ],
                                 margin="xs"
                             ),
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="結餘", size="sm", color="#5D4037", weight="bold", flex=1),
+                                    TextComponent(text="結餘", size="sm", color="#595959", weight="bold", flex=1),
                                     TextComponent(
                                         text=f"${summary['net']}",
                                         size="sm",
-                                        color="#4CAF50" if summary['net'] >= 0 else "#EF6C00",
+                                        color="#FFC940" if summary['net'] >= 0 else "#FAAD14",
                                         align="end",
                                         weight="bold",
                                         flex=1
@@ -1134,12 +1144,12 @@ class FlexMessageService:
                         ]
                     ),
                     # 分隔線
-                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    SeparatorComponent(margin="md", color="#D9D9D9"),
                     # 交易記錄標題
                     TextComponent(
                         text="點擊項目可查看詳情並編輯",
                         size="xs",
-                        color="#8D6E63",
+                        color="#8C8C8C",
                         align="center",
                         margin="md"
                     )
@@ -1147,14 +1157,14 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFFDE7",  # 更淡的黃色
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     BoxComponent(
                         layout="horizontal",
                         contents=[
                             ButtonComponent(
                                 style="secondary",
-                                color="#A1887F",  # 褐色
+                                color="#8C8C8C",  # 次要文字色
                                 action=PostbackAction(
                                     label="返回",
                                     display_text="返回主選單",
@@ -1165,7 +1175,7 @@ class FlexMessageService:
                             ),
                             ButtonComponent(
                                 style="primary",
-                                color="#F9A825",  # 金黃色
+                                color="#FFE58F",  # 輔助亮黃
                                 action=MessageAction(
                                     label="新增記錄",
                                     text="kimi"
@@ -1190,7 +1200,7 @@ class FlexMessageService:
         """創建交易詳情界面"""
         # 設置顏色和標題
         is_expense = transaction['is_expense']
-        header_color = "#EF6C00" if is_expense else "#4CAF50"  # 深橙色/綠色
+        header_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         header_title = "支出詳情" if is_expense else "收入詳情"
         
         bubble = BubbleContainer(
@@ -1216,18 +1226,18 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 paddingAll="15px",
                 contents=[
                     # 類別
                     BoxComponent(
                         layout="horizontal",
                         contents=[
-                            TextComponent(text="類別", size="md", color="#8D6E63", flex=1),
+                            TextComponent(text="類別", size="md", color="#8C8C8C", flex=1),
                             TextComponent(
                                 text=f"{transaction['category_icon']} {transaction['category']}",
                                 size="md",
-                                color="#5D4037",
+                                color="#595959",
                                 weight="bold",
                                 align="end",
                                 flex=2
@@ -1239,7 +1249,7 @@ class FlexMessageService:
                     BoxComponent(
                         layout="horizontal",
                         contents=[
-                            TextComponent(text="金額", size="md", color="#8D6E63", flex=1),
+                            TextComponent(text="金額", size="md", color="#8C8C8C", flex=1),
                             TextComponent(
                                 text=f"${transaction['amount']}",
                                 size="md",
@@ -1255,11 +1265,11 @@ class FlexMessageService:
                     BoxComponent(
                         layout="horizontal",
                         contents=[
-                            TextComponent(text="帳戶", size="md", color="#8D6E63", flex=1),
+                            TextComponent(text="帳戶", size="md", color="#8C8C8C", flex=1),
                             TextComponent(
                                 text=transaction['account'],
                                 size="md",
-                                color="#5D4037",
+                                color="#595959",
                                 align="end",
                                 flex=2
                             )
@@ -1270,11 +1280,11 @@ class FlexMessageService:
                     BoxComponent(
                         layout="horizontal",
                         contents=[
-                            TextComponent(text="時間", size="md", color="#8D6E63", flex=1),
+                            TextComponent(text="時間", size="md", color="#8C8C8C", flex=1),
                             TextComponent(
                                 text=transaction['date'],
                                 size="md",
-                                color="#5D4037",
+                                color="#595959",
                                 align="end",
                                 flex=2
                             )
@@ -1285,11 +1295,11 @@ class FlexMessageService:
                     BoxComponent(
                         layout="horizontal",
                         contents=[
-                            TextComponent(text="備註", size="md", color="#8D6E63", flex=1),
+                            TextComponent(text="備註", size="md", color="#8C8C8C", flex=1),
                             TextComponent(
                                 text=transaction['note'] if transaction['note'] else "無",
                                 size="md",
-                                color="#5D4037",
+                                color="#595959",
                                 align="end",
                                 flex=2,
                                 wrap=True
@@ -1298,19 +1308,19 @@ class FlexMessageService:
                         margin="md"
                     ),
                     # 分隔線
-                    SeparatorComponent(margin="xl", color="#D7CCC8")
+                    SeparatorComponent(margin="xl", color="#D9D9D9")
                 ]
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     BoxComponent(
                         layout="horizontal",
                         contents=[
                             ButtonComponent(
                                 style="primary",
-                                color="#F9A825",  # 金黃色
+                                color="#FFC940",  # 主色 Primary
                                 action=PostbackAction(
                                     label="修改",
                                     display_text=f"修改交易 {transaction['id']}",
@@ -1321,7 +1331,7 @@ class FlexMessageService:
                             ),
                             ButtonComponent(
                                 style="secondary",
-                                color="#A1887F",  # 褐色
+                                color="#8C8C8C",  # 次要文字色
                                 action=PostbackAction(
                                     label="確定",
                                     display_text="返回交易列表",
@@ -1335,7 +1345,7 @@ class FlexMessageService:
                     ),
                     ButtonComponent(
                         style="secondary",
-                        color="#D32F2F",  # 紅色
+                        color="#FAAD14",  # 強調亮點黃
                         action=PostbackAction(
                             label="刪除",
                             display_text=f"刪除交易 {transaction['id']}",
@@ -1358,14 +1368,14 @@ class FlexMessageService:
         """創建編輯交易的表單界面"""
         # 設置顏色和標題
         is_expense = transaction['is_expense']
-        header_color = "#EF6C00" if is_expense else "#4CAF50"  # 深橙色/綠色
+        header_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         header_title = "修改支出" if is_expense else "修改收入"
         
         # 創建類別選擇按鈕
         category_buttons = []
         for category in categories:
-            bg_color = "#F9A825" if category.id == transaction['category_id'] else "#FFFFFF"
-            text_color = "#FFFFFF" if category.id == transaction['category_id'] else "#5D4037"
+            bg_color = "#FFE58F" if category.id == transaction['category_id'] else "#FFFFFF"
+            text_color = "#FFFFFF" if category.id == transaction['category_id'] else "#595959"
             
             category_buttons.append(
                 BoxComponent(
@@ -1412,8 +1422,8 @@ class FlexMessageService:
         # 創建帳戶選擇按鈕
         account_buttons = []
         for account in accounts:
-            bg_color = "#F9A825" if account.id == transaction['account_id'] else "#FFFFFF"
-            text_color = "#FFFFFF" if account.id == transaction['account_id'] else "#5D4037"
+            bg_color = "#FFE58F" if account.id == transaction['account_id'] else "#FFFFFF"
+            text_color = "#FFFFFF" if account.id == transaction['account_id'] else "#595959"
             
             account_buttons.append(
                 ButtonComponent(
@@ -1452,30 +1462,30 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 paddingAll="15px",
                 contents=[
                     # 當前值顯示
                     BoxComponent(
                         layout="vertical",
-                        backgroundColor="#FFFDE7",
+                        backgroundColor="#FFFBE6",
                         cornerRadius="md",
                         paddingAll="10px",
                         contents=[
                             TextComponent(
                                 text="當前值",
                                 size="xs",
-                                color="#8D6E63",
+                                color="#8C8C8C",
                                 weight="bold"
                             ),
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="類別", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(text="類別", size="xs", color="#8C8C8C", flex=1),
                                     TextComponent(
                                         text=transaction['category'],
                                         size="xs",
-                                        color="#5D4037",
+                                        color="#595959",
                                         align="end",
                                         flex=2
                                     )
@@ -1485,7 +1495,7 @@ class FlexMessageService:
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="金額", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(text="金額", size="xs", color="#8C8C8C", flex=1),
                                     TextComponent(
                                         text=f"${transaction['amount']}",
                                         size="xs",
@@ -1499,11 +1509,11 @@ class FlexMessageService:
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="帳戶", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(text="帳戶", size="xs", color="#8C8C8C", flex=1),
                                     TextComponent(
                                         text=transaction['account'],
                                         size="xs",
-                                        color="#5D4037",
+                                        color="#595959",
                                         align="end",
                                         flex=2
                                     )
@@ -1513,11 +1523,11 @@ class FlexMessageService:
                             BoxComponent(
                                 layout="horizontal",
                                 contents=[
-                                    TextComponent(text="備註", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(text="備註", size="xs", color="#8C8C8C", flex=1),
                                     TextComponent(
                                         text=transaction['note'] if transaction['note'] else "無",
                                         size="xs",
-                                        color="#5D4037",
+                                        color="#595959",
                                         align="end",
                                         flex=2,
                                         wrap=True
@@ -1528,23 +1538,23 @@ class FlexMessageService:
                         ]
                     ),
                     # 分隔線
-                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    SeparatorComponent(margin="md", color="#D9D9D9"),
                     # 編輯選項
                     TextComponent(
                         text="選擇類別",
                         size="md",
-                        color="#5D4037",
+                        color="#595959",
                         weight="bold",
                         margin="md"
                     )
                 ] + grouped_categories + [
                     # 分隔線
-                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    SeparatorComponent(margin="md", color="#D9D9D9"),
                     # 帳戶選擇
                     TextComponent(
                         text="選擇帳戶",
                         size="md",
-                        color="#5D4037",
+                        color="#595959",
                         weight="bold",
                         margin="md"
                     ),
@@ -1554,7 +1564,7 @@ class FlexMessageService:
                         contents=account_buttons
                     ),
                     # 分隔線
-                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    SeparatorComponent(margin="md", color="#D9D9D9"),
                     # 修改金額和備註的按鈕
                     BoxComponent(
                         layout="horizontal",
@@ -1562,7 +1572,7 @@ class FlexMessageService:
                         contents=[
                             ButtonComponent(
                                 style="primary",
-                                color="#F9A825",  # 金黃色
+                                color="#FFE58F",  # 輔助亮黃
                                 action=PostbackAction(
                                     label="修改金額",
                                     display_text=f"修改交易 {transaction['id']} 金額",
@@ -1573,7 +1583,7 @@ class FlexMessageService:
                             ),
                             ButtonComponent(
                                 style="primary",
-                                color="#F9A825",  # 金黃色
+                                color="#FFE58F",  # 輔助亮黃
                                 action=PostbackAction(
                                     label="修改備註",
                                     display_text=f"修改交易 {transaction['id']} 備註",
@@ -1589,11 +1599,11 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     ButtonComponent(
                         style="secondary",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="返回詳情",
                             display_text=f"查看交易 {transaction['id']}",
@@ -1633,7 +1643,7 @@ class FlexMessageService:
                             TextComponent(
                                 text="您確定要刪除以下交易記錄嗎？",
                                 size="md",
-                                color="#5D4037",
+                                color="#595959",
                                 wrap=True
                             ),
                             TextComponent(
@@ -1652,24 +1662,24 @@ class FlexMessageService:
                                     TextComponent(
                                         text=f"ID: {transaction_id}",
                                         size="xs",
-                                        color="#8D6E63"
+                                        color="#8C8C8C"
                                     ),
                                     TextComponent(
                                         text=f"類別: {category}",
                                         size="md",
-                                        color="#5D4037",
+                                        color="#595959",
                                         margin="xs"
                                     ),
                                     TextComponent(
                                         text=f"金額: ${amount}",
                                         size="md",
-                                        color="#5D4037",
+                                        color="#595959",
                                         margin="xs"
                                     ),
                                     TextComponent(
                                         text=f"日期: {date}",
                                         size="xs",
-                                        color="#8D6E63",
+                                        color="#8C8C8C",
                                         margin="xs"
                                     )
                                 ]
@@ -1687,7 +1697,7 @@ class FlexMessageService:
                         contents=[
                             ButtonComponent(
                                 style="secondary",
-                                color="#A1887F",  # 褐色
+                                color="#8C8C8C",  # 次要文字色
                                 action=PostbackAction(
                                     label="取消",
                                     display_text=f"取消刪除交易 {transaction_id}",
@@ -1725,7 +1735,7 @@ class FlexMessageService:
         bubble = BubbleContainer(
             header=BoxComponent(
                 layout="vertical",
-                backgroundColor="#F9A825",  # 金黃色
+                backgroundColor="#FFE58F",  # 輔助亮黃
                 paddingAll="10px",
                 contents=[
                     TextComponent(
@@ -1739,12 +1749,12 @@ class FlexMessageService:
             ),
             body=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 paddingAll="15px",
                 contents=[
                     ButtonComponent(
                         style="primary",
-                        color="#F9A825",  # 金黃色
+                        color="#FFE58F",  # 輔助亮黃
                         action=PostbackAction(
                             label="今天",
                             display_text="查詢今天的交易記錄",
@@ -1755,7 +1765,7 @@ class FlexMessageService:
                     ),
                     ButtonComponent(
                         style="primary",
-                        color="#F9A825",  # 金黃色
+                        color="#FFE58F",  # 輔助亮黃
                         action=PostbackAction(
                             label="昨天",
                             display_text="查詢昨天的交易記錄",
@@ -1766,7 +1776,7 @@ class FlexMessageService:
                     ),
                     ButtonComponent(
                         style="primary",
-                        color="#F9A825",  # 金黃色
+                        color="#FFE58F",  # 輔助亮黃
                         action=PostbackAction(
                             label="本週",
                             display_text="查詢本週的交易記錄",
@@ -1777,7 +1787,7 @@ class FlexMessageService:
                     ),
                     ButtonComponent(
                         style="primary",
-                        color="#F9A825",  # 金黃色
+                        color="#FFE58F",  # 輔助亮黃
                         action=PostbackAction(
                             label="本月",
                             display_text="查詢本月的交易記錄",
@@ -1790,11 +1800,11 @@ class FlexMessageService:
             ),
             footer=BoxComponent(
                 layout="vertical",
-                backgroundColor="#FFF8E1",  # 淡黃色背景
+                backgroundColor="#FFFBE6",  # 淡黃背景區塊
                 contents=[
                     ButtonComponent(
                         style="secondary",
-                        color="#A1887F",  # 褐色
+                        color="#8C8C8C",  # 次要文字色
                         action=PostbackAction(
                             label="返回",
                             display_text="返回主選單",
