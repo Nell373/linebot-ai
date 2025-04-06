@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 # 從環境變數獲取 LIFF_ID
 LIFF_ID = os.environ.get('LIFF_ID', '1654912345-AbCdEfGh')
-LIFF_URL = f"https://liff.line.me/{LIFF_ID}"
+# 直接使用有效的 URL，而不是依賴環境變數
+LIFF_URL = "https://liff.line.me/1657520763-1lA5AQR4"
 
 logger.info(f"使用 LIFF URL: {LIFF_URL}")
 
@@ -75,9 +76,10 @@ class FlexMessageService:
                             ButtonComponent(
                                 style="primary",
                                 color="#FAAD14",  # 強調亮點黃
-                                action=URIAction(
-                                    label="新增任務",
-                                    uri=LIFF_URL
+                                action=PostbackAction(
+                                    label="任務",
+                                    display_text="任務管理",
+                                    data="action=task_menu"
                                 ),
                                 height="sm",
                                 margin="md",
@@ -1853,9 +1855,10 @@ class FlexMessageService:
                     ButtonComponent(
                         style="primary",
                         color="#FAAD14",
-                        action=URIAction(
+                        action=PostbackAction(
                             label="新增任務",
-                            uri=LIFF_URL
+                            display_text="新增任務",
+                            data="action=create_task"
                         ),
                         height="sm",
                         margin="md"

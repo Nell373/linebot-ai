@@ -168,6 +168,62 @@ def process_message(event):
                     return error
                 
                 return FlexMessageService.create_transaction_detail(transaction_detail)
+            elif state.get('waiting_for') == 'task_details':
+                # 用戶正在輸入任務詳情
+                
+                # 解析任務內容和提醒時間
+                task_info = {}
+                try:
+                    # 嘗試解析「任務:xxx 提醒:xxx」格式
+                    task_match = re.search(r'任務[:：](.+?)(?:\s+提醒[:：]|$)', message_text)
+                    reminder_match = re.search(r'提醒[:：](.+)', message_text)
+                    
+                    if task_match:
+                        task_info['name'] = task_match.group(1).strip()
+                    else:
+                        task_info['name'] = message_text.strip()
+                    
+                    if reminder_match:
+                        task_info['reminder_time'] = reminder_match.group(1).strip()
+                    else:
+                        task_info['reminder_time'] = '明天早上9點'
+                    
+                    # 創建提醒
+                    from models import db, Reminder
+                    import datetime
+                    
+                    # 嘗試解析時間
+                    now = datetime.datetime.now()
+                    reminder_time = now + datetime.timedelta(days=1)  # 默認為明天
+                    
+                    # 簡單處理一些常見的時間表達
+                    time_text = task_info['reminder_time']
+                    if '今天' in time_text:
+                        reminder_time = now
+                    elif '明天' in time_text:
+                        reminder_time = now + datetime.timedelta(days=1)
+                    elif '後天' in time_text:
+                        reminder_time = now + datetime.timedelta(days=2)
+                    
+                    # 創建提醒
+                    new_reminder = Reminder(
+                        user_id=user_id,
+                        content=task_info['name'],
+                        reminder_time=reminder_time,
+                        repeat_type='none',
+                        is_completed=False
+                    )
+                    db.session.add(new_reminder)
+                    db.session.commit()
+                    
+                    # 清除用戶狀態
+                    del user_states[user_id]
+                    
+                    return f"已創建任務: {task_info['name']}\n提醒時間: {reminder_time.strftime('%Y-%m-%d %H:%M')}"
+                    
+                except Exception as e:
+                    logger.error(f"處理任務詳情時出錯: {str(e)}")
+                    return "處理任務時出錯，請使用格式：「任務:買牛奶 提醒:明天早上9點」"
         
         # 處理特殊命令
         if message_text.lower() == 'kimi':
@@ -817,6 +873,14 @@ def handle_postback(event):
         elif action == 'task_menu':
             # 顯示任務管理選單
             response = FlexMessageService.create_task_menu(user_id)
+        
+        elif action == 'create_task':
+            # 創建新任務
+            response = "請輸入任務內容，格式為：「任務:內容 提醒:時間」，例如：「任務:買牛奶 提醒:明天早上9點」"
+            # 設置用戶狀態
+            user_states[user_id] = {
+                'waiting_for': 'task_details'
+            }
         
         elif action == 'main_menu':
             # 返回主選單
