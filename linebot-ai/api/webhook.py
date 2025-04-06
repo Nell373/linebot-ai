@@ -53,13 +53,14 @@ class handler(BaseHTTPRequestHandler):
 def handle_message(event):
     try:
         text = event.message.text
-        logger.info(f"Received message: {text}")
+        user_id = event.source.user_id
+        logger.info(f"Received message from user {user_id}: {text}")
         
         # 從 src 目錄導入處理邏輯
         from src.message_processor import process_message
         
-        # 處理訊息
-        response = process_message(text)
+        # 處理訊息，傳入使用者 ID
+        response = process_message(text, user_id)
         logger.info(f"Generated response: {response}")
         
         # 回覆訊息
