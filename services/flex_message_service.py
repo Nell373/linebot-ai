@@ -1309,23 +1309,23 @@ class FlexMessageService:
                         layout="horizontal",
                         contents=[
                             ButtonComponent(
-                                style="secondary",
-                                color="#A1887F",  # 褐色
-                                action=PostbackAction(
-                                    label="返回",
-                                    display_text="返回交易列表",
-                                    data="action=view_transactions&period=today"
-                                ),
-                                height="sm",
-                                flex=1
-                            ),
-                            ButtonComponent(
                                 style="primary",
                                 color="#F9A825",  # 金黃色
                                 action=PostbackAction(
                                     label="修改",
                                     display_text=f"修改交易 {transaction['id']}",
                                     data=f"action=edit_transaction&id={transaction['id']}"
+                                ),
+                                height="sm",
+                                flex=1
+                            ),
+                            ButtonComponent(
+                                style="secondary",
+                                color="#A1887F",  # 褐色
+                                action=PostbackAction(
+                                    label="確定",
+                                    display_text="返回交易列表",
+                                    data="action=view_transactions&period=today"
                                 ),
                                 height="sm",
                                 flex=1,
