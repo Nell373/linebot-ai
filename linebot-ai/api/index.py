@@ -20,16 +20,16 @@ line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
 @app.route('/', methods=['GET'])
-def home():
-    logger.info("Home route accessed")
-    return Response('LINE Bot is running!', status=200)
+def api_home():
+    logger.info("API Home route accessed")
+    return Response('API endpoint is active', status=200)
 
-@app.route('/api/webhook', methods=['GET'])
+@app.route('/webhook', methods=['GET'])
 def webhook_get():
     logger.info("Webhook GET route accessed")
     return Response('Webhook endpoint is active', status=200)
 
-@app.route('/api/webhook', methods=['POST'])
+@app.route('/webhook', methods=['POST'])
 def webhook_post():
     logger.info("Webhook POST route accessed")
     
@@ -89,6 +89,10 @@ def handle_message(event):
             logger.info("Error message sent successfully")
         except Exception as reply_error:
             logger.error(f"Error sending error message: {str(reply_error)}", exc_info=True)
+
+# Vercel 需要這個處理函數
+def handler(event, context):
+    return app(event, context)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080))) 
