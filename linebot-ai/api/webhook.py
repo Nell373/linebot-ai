@@ -1,3 +1,4 @@
+from http.server import BaseHTTPRequestHandler
 import os
 import json
 import logging
@@ -13,48 +14,40 @@ logger = logging.getLogger(__name__)
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', ''))
 webhook_handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET', ''))
 
-def handler(request):
-    if request.method == 'GET':
-        return {
-            "statusCode": 200,
-            "body": "Webhook endpoint is active"
-        }
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        message = "Webhook endpoint is active"
+        self.wfile.write(message.encode())
+        return None
     
-    if request.method == 'POST':
-        # 獲取請求內容
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf-8')
+        logger.info(f"Request body: {post_data}")
+        
+        # 獲取 X-Line-Signature 標頭值
+        signature = self.headers.get('X-Line-Signature', '')
+        
+        # 設置回應標頭
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        
+        # 處理 webhook
         try:
-            body = request.body.decode('utf-8')
-            logger.info(f"Request body: {body}")
-            
-            # 獲取 X-Line-Signature 標頭值
-            signature = request.headers.get('X-Line-Signature', '')
-            
-            # 處理 webhook
-            try:
-                webhook_handler.handle(body, signature)
-            except InvalidSignatureError:
-                logger.error("Invalid signature")
-                return {
-                    "statusCode": 400,
-                    "body": "Invalid signature"
-                }
-            except Exception as e:
-                logger.error(f"Error: {str(e)}")
-                return {
-                    "statusCode": 500,
-                    "body": f"Error: {str(e)}"
-                }
-            
-            return {
-                "statusCode": 200,
-                "body": "OK"
-            }
+            webhook_handler.handle(post_data, signature)
+            self.wfile.write("OK".encode())
+        except InvalidSignatureError:
+            logger.error("Invalid signature")
+            self.wfile.write("Invalid signature".encode())
         except Exception as e:
-            logger.error(f"Error processing request: {str(e)}")
-            return {
-                "statusCode": 500,
-                "body": f"Error processing request: {str(e)}"
-            }
+            logger.error(f"Error: {str(e)}")
+            self.wfile.write(f"Error: {str(e)}".encode())
+        
+        return None
 
 @webhook_handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):

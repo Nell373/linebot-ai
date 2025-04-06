@@ -1,7 +1,10 @@
 from http.server import BaseHTTPRequestHandler
 
-def handler(request):
-    return {
-        "statusCode": 200,
-        "body": "Hello from Python on Vercel!"
-    } 
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        message = "Hello from Python on Vercel!"
+        self.wfile.write(message.encode())
+        return None 

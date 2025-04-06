@@ -1,10 +1,10 @@
-from flask import Flask, Response
+from http.server import BaseHTTPRequestHandler
 
-app = Flask(__name__)
-
-@app.route('/', methods=['GET'])
-def home():
-    return Response('LINE Bot is running!', status=200)
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080) 
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        message = "LINE Bot is running!"
+        self.wfile.write(message.encode())
+        return None 
