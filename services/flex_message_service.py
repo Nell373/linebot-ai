@@ -17,21 +17,21 @@ logger = logging.getLogger(__name__)
 class FlexMessageService:
     @staticmethod
     def create_main_menu():
-        """創建主選單 (交易類型選擇)"""
+        """創建主選單 (功能選擇)"""
         bubble = BubbleContainer(
             body=BoxComponent(
                 layout="vertical",
                 backgroundColor="#FFF8E1",  # 淡黃色背景
                 contents=[
                     TextComponent(
-                        text="記帳",
+                        text="Kimi 助手",
                         weight="bold",
                         size="xl",
                         align="center",
                         color="#5D4037"  # 深褐色文字
                     ),
                     TextComponent(
-                        text="請選擇交易類型",
+                        text="請選擇功能",
                         size="md",
                         color="#8D6E63",  # 褐色文字
                         align="center",
@@ -46,42 +46,33 @@ class FlexMessageService:
                                 style="primary",
                                 color="#FFB74D",  # 橙黃色按鈕
                                 action=PostbackAction(
-                                    label="收入",
-                                    display_text="記錄收入",
-                                    data="action=record&type=income"
+                                    label="記帳",
+                                    display_text="記帳",
+                                    data="action=record&type=expense"
                                 ),
-                                height="sm"
+                                height="sm",
+                                flex=1
                             ),
                             ButtonComponent(
                                 style="primary",
                                 color="#EF6C00",  # 深橙色按鈕
                                 action=PostbackAction(
-                                    label="支出",
-                                    display_text="記錄支出",
-                                    data="action=record&type=expense"
+                                    label="任務",
+                                    display_text="任務管理",
+                                    data="action=task_menu"
                                 ),
                                 height="sm",
-                                margin="md"
+                                margin="md",
+                                flex=1
                             )
                         ]
-                    ),
-                    ButtonComponent(
-                        style="secondary",
-                        color="#A1887F",  # 褐色按鈕
-                        action=PostbackAction(
-                            label="轉帳",
-                            display_text="記錄轉帳",
-                            data="action=record&type=transfer"
-                        ),
-                        height="sm",
-                        margin="md"
                     )
                 ]
             )
         )
         
         return FlexSendMessage(
-            alt_text="記帳選單",
+            alt_text="Kimi 助手選單",
             contents=bubble,
             quick_reply=QuickReply(items=[
                 QuickReplyButton(

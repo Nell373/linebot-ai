@@ -18,7 +18,6 @@ from datetime import datetime, timedelta
 
 # 導入服務模組
 from services.finance_service import FinanceService
-from services.note_service import NoteService
 from services.flex_message_service import FlexMessageService
 
 # 設置日誌
@@ -90,11 +89,6 @@ def process_message(event):
         finance_response = FinanceService.process_finance_command(message_text, user_id)
         if finance_response:
             return finance_response
-        
-        # 嘗試處理筆記相關命令
-        note_response = NoteService.process_note_command(message_text, user_id)
-        if note_response:
-            return note_response
         
         # 如果沒有匹配的命令格式，返回幫助信息
         return "抱歉，我無法理解您的命令。請嘗試使用以下格式：\n" + get_help_text()
@@ -208,14 +202,14 @@ def get_help_text():
         "記錄收入：收入5000 薪資",
         "查詢記錄：今天 或 本週 或 本月",
         "查看統計：月報 或 月報2023-5",
-        "互動記帳：輸入 kimi 啟動互動式記帳",
+        "互動操作：輸入 kimi 啟動互動式選單",
         "",
-        "=== 筆記功能 ===",
-        "添加筆記：筆記 標題\n內容 #標籤1 #標籤2",
-        "查看列表：筆記列表 或 筆記列表 #標籤",
-        "查看詳情：筆記 ID",
-        "更新筆記：筆記更新 ID 新標題\n新內容 #新標籤",
-        "刪除筆記：筆記刪除 ID",
+        "=== 任務功能 ===",
+        "添加任務：任務 任務內容 #標籤1 #標籤2",
+        "查看列表：任務列表 或 任務列表 #標籤",
+        "查看詳情：任務 ID",
+        "更新狀態：任務完成 ID",
+        "刪除任務：任務刪除 ID",
         "",
         "=== 提醒功能 ===",
         "添加提醒：提醒 內容 2023-5-20 14:30 每週",
@@ -593,10 +587,15 @@ def handle_postback(event):
             
             response = "已取消當前操作。"
         
+        elif action == 'task_menu':
+            # 顯示任務管理選單
+            # 這裡可以根據需要添加任務管理的功能
+            response = "任務管理功能即將推出，敬請期待！"
+        
         elif action == 'main_menu':
             # 返回主選單
             response = FlexMessageService.create_main_menu()
-            
+        
         else:
             response = "未知的操作。"
         
