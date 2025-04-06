@@ -225,47 +225,6 @@ class FlexMessageService:
         type_text = "支出" if is_expense else "收入"
         type_color = "#FF6B6E" if is_expense else "#27ACB2"
         
-        # 數字鍵盤
-        keypad_rows = []
-        numbers = [
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
-            ["00", "0", "X"]
-        ]
-        
-        for row in numbers:
-            button_row = BoxComponent(
-                layout="horizontal",
-                margin="md",
-                contents=[]
-            )
-            
-            for num in row:
-                action = None
-                if num == "X":
-                    action = PostbackAction(
-                        label="⌫",
-                        data=f"action=keypad&type={transaction_type}&category={category}&key=backspace"
-                    )
-                else:
-                    action = PostbackAction(
-                        label=num,
-                        data=f"action=keypad&type={transaction_type}&category={category}&key={num}"
-                    )
-                
-                button_row.contents.append(
-                    ButtonComponent(
-                        style="primary" if num != "X" else "secondary",
-                        color="#666666" if num != "X" else "#999999",
-                        action=action,
-                        height="sm",
-                        margin="xs"
-                    )
-                )
-            
-            keypad_rows.append(button_row)
-        
         bubble = BubbleContainer(
             header=BoxComponent(
                 layout="vertical",
@@ -292,26 +251,40 @@ class FlexMessageService:
                 layout="vertical",
                 contents=[
                     TextComponent(
-                        text="您可以直接輸入金額數字，或使用下方按鈕",
-                        size="sm",
+                        text="請直接輸入金額數字",
+                        size="md",
                         color="#888888",
                         align="center",
                         margin="md"
                     ),
                     TextComponent(
-                        text="按下數字後會顯示預覽金額",
+                        text="例如：150、1000、33000",
                         size="sm",
                         color="#888888",
                         align="center",
                         margin="sm"
                     ),
                     TextComponent(
-                        text="數字鍵盤",
-                        size="md",
-                        weight="bold",
-                        margin="lg"
+                        text="或使用快速格式：早餐-50、薪資+5000",
+                        size="sm",
+                        color="#888888",
+                        align="center",
+                        margin="sm"
+                    ),
+                    BoxComponent(
+                        layout="vertical",
+                        margin="xxl",
+                        contents=[
+                            TextComponent(
+                                text="請在下方輸入框中直接輸入金額",
+                                size="md", 
+                                weight="bold",
+                                align="center",
+                                color="#555555"
+                            )
+                        ]
                     )
-                ] + keypad_rows
+                ]
             ),
             footer=BoxComponent(
                 layout="vertical",

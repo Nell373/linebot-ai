@@ -304,15 +304,21 @@ class FinanceService:
     @staticmethod
     def parse_transaction_command(text):
         """解析用戶輸入的命令"""
-        # 支出格式：類別+金額+備註(可選)
-        # 例如：早餐50 或 午餐120 麥當勞
-        expense_pattern = r'^([\u4e00-\u9fa5a-zA-Z]+)(\d+)(?:\s+(.+))?$'
-        expense_match = re.match(expense_pattern, text)
+        # 支出格式：類別-金額+備註(可選) 或 類別+金額+備註(可選)
+        # 例如：早餐-50 或 午餐120 麥當勞
+        expense_pattern1 = r'^([\u4e00-\u9fa5a-zA-Z]+)-(\d+)(?:\s+(.+))?$'
+        expense_pattern2 = r'^([\u4e00-\u9fa5a-zA-Z]+)(\d+)(?:\s+(.+))?$'
         
-        # 收入格式：收入+金額+備註(可選)
-        # 例如：收入5000 薪資
-        income_pattern = r'^收入(\d+)(?:\s+(.+))?$'
-        income_match = re.match(income_pattern, text)
+        expense_match1 = re.match(expense_pattern1, text)
+        expense_match2 = re.match(expense_pattern2, text)
+        
+        # 收入格式：類別+金額 或 收入+金額+備註(可選)
+        # 例如：薪資+33000 或 收入5000 薪資
+        income_pattern1 = r'^([\u4e00-\u9fa5a-zA-Z]+)\+(\d+)(?:\s+(.+))?$'
+        income_pattern2 = r'^收入(\d+)(?:\s+(.+))?$'
+        
+        income_match1 = re.match(income_pattern1, text)
+        income_match2 = re.match(income_pattern2, text)
         
         # 查詢格式：今天 或 昨天 或 本週 或 本月
         query_pattern = r'^(今天|昨天|本週|本月)$'
@@ -323,10 +329,10 @@ class FinanceService:
         monthly_pattern = r'^月報(?:(\d{4})-(\d{1,2}))?$'
         monthly_match = re.match(monthly_pattern, text)
         
-        if expense_match:
-            category = expense_match.group(1)
-            amount = int(expense_match.group(2))
-            note = expense_match.group(3)
+        if expense_match1:
+            category = expense_match1.group(1)
+            amount = int(expense_match1.group(2))
+            note = expense_match1.group(3)
             
             return {
                 'type': 'expense',
@@ -335,9 +341,33 @@ class FinanceService:
                 'note': note
             }
         
-        elif income_match:
-            amount = int(income_match.group(1))
-            note = income_match.group(2)
+        elif expense_match2:
+            category = expense_match2.group(1)
+            amount = int(expense_match2.group(2))
+            note = expense_match2.group(3)
+            
+            return {
+                'type': 'expense',
+                'category': category,
+                'amount': amount,
+                'note': note
+            }
+        
+        elif income_match1:
+            category = income_match1.group(1)
+            amount = int(income_match1.group(2))
+            note = income_match1.group(3)
+            
+            return {
+                'type': 'income',
+                'category': category,
+                'amount': amount,
+                'note': note
+            }
+        
+        elif income_match2:
+            amount = int(income_match2.group(1))
+            note = income_match2.group(2)
             
             return {
                 'type': 'income',
@@ -388,10 +418,11 @@ class FinanceService:
             )
         
         elif command['type'] == 'income':
+            category_name = command.get('category', '其他收入')  # 如果沒有指定類別，使用"其他收入"
             return FinanceService.add_transaction(
                 user_id=user_id,
                 amount=command['amount'],
-                category_name='其他收入',  # 默認使用其他收入類別
+                category_name=category_name,
                 note=command['note'],
                 is_expense=False
             )
