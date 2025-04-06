@@ -309,7 +309,7 @@ class FlexMessageService:
         )
 
     @staticmethod
-    def create_account_selection(user_id, transaction_type, category, amount):
+    def create_account_selection(user_id, transaction_type, category, amount, note=None):
         """創建帳戶選擇選單"""
         # 獲取用戶的帳戶
         accounts = Account.query.filter_by(user_id=user_id).all()
@@ -321,6 +321,11 @@ class FlexMessageService:
         # 創建帳戶按鈕
         account_buttons = []
         for account in accounts:
+            # 構建 postback 數據，如果有備註則包含
+            postback_data = f"action=account&type={transaction_type}&category={category}&amount={amount}&account={account.name}"
+            if note:
+                postback_data += f"&note={note}"
+                
             account_buttons.append(
                 ButtonComponent(
                     style="primary",
@@ -328,7 +333,7 @@ class FlexMessageService:
                     action=PostbackAction(
                         label=account.name,
                         display_text=f"選擇帳戶：{account.name}",
-                        data=f"action=account&type={transaction_type}&category={category}&amount={amount}&account={account.name}"
+                        data=postback_data
                     ),
                     height="sm",
                     margin="md"

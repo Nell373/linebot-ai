@@ -15,6 +15,7 @@ from linebot.models import (
     PostbackEvent, PostbackAction
 )
 from datetime import datetime, timedelta
+import re
 
 # 導入服務模組
 from services.finance_service import FinanceService
@@ -59,19 +60,38 @@ def process_message(event):
             if state.get('waiting_for') == 'amount':
                 # 用戶正在輸入金額
                 try:
-                    amount = float(message_text)  # 使用 float 而不是 int 來支持小數金額
-                    logger.info(f"用戶 {user_id} 輸入金額: {amount}")
-                    return handle_amount_input(user_id, amount, state)
+                    # 檢查輸入是否包含文字作為備註
+                    # 例如: "早餐500" 中的 "早餐" 將作為備註
+                    text_note_match = re.match(r'^([^\d]+)(\d[\d,.]+)$', message_text)
+                    if text_note_match:
+                        note = text_note_match.group(1).strip()
+                        amount_str = text_note_match.group(2).replace(',', '')
+                        amount = float(amount_str)
+                        logger.info(f"用戶 {user_id} 輸入金額: {amount}，自動帶入備註: {note}")
+                        return handle_amount_input(user_id, amount, state, note)
+                    else:
+                        amount = float(message_text)  # 使用 float 而不是 int 來支持小數金額
+                        logger.info(f"用戶 {user_id} 輸入金額: {amount}")
+                        return handle_amount_input(user_id, amount, state)
                 except ValueError:
                     # 嘗試檢查是否包含逗號或其他非數字字符
                     try:
                         # 移除逗號、空格等字符
                         cleaned_text = message_text.replace(',', '').replace(' ', '')
-                        amount = float(cleaned_text)
-                        logger.info(f"用戶 {user_id} 輸入經過清理的金額: {amount}")
-                        return handle_amount_input(user_id, amount, state)
+                        # 再檢查一次是否有文字備註
+                        text_note_match = re.match(r'^([^\d]+)(\d[\d,.]+)$', cleaned_text)
+                        if text_note_match:
+                            note = text_note_match.group(1).strip()
+                            amount_str = text_note_match.group(2)
+                            amount = float(amount_str)
+                            logger.info(f"用戶 {user_id} 輸入經過清理的金額: {amount}，自動帶入備註: {note}")
+                            return handle_amount_input(user_id, amount, state, note)
+                        else:
+                            amount = float(cleaned_text)
+                            logger.info(f"用戶 {user_id} 輸入經過清理的金額: {amount}")
+                            return handle_amount_input(user_id, amount, state)
                     except ValueError:
-                        return "請輸入有效的數字金額，例如: 100 或 1,234.56"
+                        return "請輸入有效的數字金額，例如: 100 或 1,234.56 或 早餐500"
             elif state.get('waiting_for') == 'note':
                 # 用戶正在輸入備註
                 return handle_note_input(user_id, message_text, state)
@@ -118,16 +138,26 @@ def process_message(event):
         logger.error(f"處理訊息時發生錯誤: {str(e)}")
         return "處理您的請求時發生錯誤，請稍後再試。"
 
-def handle_amount_input(user_id, amount, state):
+def handle_amount_input(user_id, amount, state, note=None):
     """處理用戶輸入的金額"""
     transaction_type = state.get('type')
     category = state.get('category')
     
-    # 清除用戶狀態
-    del user_states[user_id]
+    # 如果有備註，保存到狀態中
+    if note:
+        user_states[user_id] = {
+            'type': transaction_type,
+            'category': category,
+            'amount': amount,
+            'note': note
+        }
+    else:
+        # 清除用戶狀態
+        if user_id in user_states:
+            del user_states[user_id]
     
     # 繼續到帳戶選擇
-    return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+    return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount, note)
 
 def handle_note_input(user_id, note, state):
     """處理用戶輸入的備註"""
@@ -462,18 +492,36 @@ def handle_postback(event):
             category = params.get('category')
             amount = float(params.get('amount'))
             account = params.get('account')
+            note = params.get('note')  # 檢查是否已經有備註
             
-            # 更新用戶狀態
-            user_states[user_id] = {
-                'type': transaction_type,
-                'category': category,
-                'amount': amount,
-                'account': account,
-                'waiting_for': 'note'
-            }
-            
-            # 詢問備註
-            response = "請輸入備註（如不需要，請輸入「無」）："
+            # 如果已經有備註，直接記錄交易
+            if note:
+                # 添加交易記錄
+                is_expense = transaction_type == 'expense'
+                add_result = FinanceService.add_transaction(
+                    user_id=user_id,
+                    amount=amount,
+                    category_name=category,
+                    note=note,
+                    account_name=account,
+                    is_expense=is_expense
+                )
+                logger.info(f"交易記錄結果: {add_result}")
+                
+                # 返回確認訊息
+                response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, note)
+            else:
+                # 如果沒有備註，更新用戶狀態，詢問備註
+                user_states[user_id] = {
+                    'type': transaction_type,
+                    'category': category,
+                    'amount': amount,
+                    'account': account,
+                    'waiting_for': 'note'
+                }
+                
+                # 詢問備註
+                response = "請輸入備註（如不需要，請輸入「無」）："
         
         elif action == 'quick_expense':
             # 用戶在快速支出界面選擇了類別
