@@ -553,4 +553,257 @@ class FinanceService:
             except ValueError:
                 return None
         
-        return None 
+        return None
+
+    @staticmethod
+    def get_editable_transactions(user_id, period="today"):
+        """獲取用戶可編輯的交易記錄，以列表形式呈現"""
+        try:
+            # 設置時間範圍，使用 UTC 時間
+            utc_now = datetime.utcnow()
+            # 轉換為台灣時間進行顯示，但查詢條件仍使用 UTC
+            taiwan_now = utc_now + timedelta(hours=8)
+            
+            if period == "today":
+                # 創建台灣時間當天的0點，然後轉換回 UTC 時間
+                start_date = datetime(taiwan_now.year, taiwan_now.month, taiwan_now.day) - timedelta(hours=8)
+                period_text = "今天"
+            elif period == "yesterday":
+                yesterday = taiwan_now - timedelta(days=1)
+                start_date = datetime(yesterday.year, yesterday.month, yesterday.day) - timedelta(hours=8)
+                period_text = "昨天"
+            elif period == "week":
+                # 獲取本週一的日期 (台灣時間)
+                monday = taiwan_now - timedelta(days=taiwan_now.weekday())
+                start_date = datetime(monday.year, monday.month, monday.day) - timedelta(hours=8)
+                period_text = "本週"
+            elif period == "month":
+                start_date = datetime(taiwan_now.year, taiwan_now.month, 1) - timedelta(hours=8)
+                period_text = "本月"
+            else:
+                return None, "無效的時間範圍，請使用：今天、昨天、本週、本月"
+            
+            # 查詢交易記錄
+            transactions = Transaction.query.filter(
+                Transaction.user_id == user_id,
+                Transaction.transaction_date >= start_date
+            ).order_by(Transaction.transaction_date.desc()).all()
+            
+            if not transactions:
+                return None, f"{period_text}沒有交易記錄。"
+            
+            # 計算總支出和總收入
+            total_expense = sum(t.amount for t in transactions if t.is_expense)
+            total_income = sum(t.amount for t in transactions if not t.is_expense)
+            
+            # 構建列表數據
+            transaction_list = []
+            for transaction in transactions:
+                category = Category.query.filter_by(id=transaction.category_id).first()
+                account = Account.query.filter_by(id=transaction.account_id).first()
+                
+                category_name = category.name if category else "未分類"
+                category_icon = category.icon if category else "📝"
+                account_name = account.name if account else "默認"
+                
+                transaction_type = "expense" if transaction.is_expense else "income"
+                type_text = "支出" if transaction.is_expense else "收入"
+                
+                # 轉換交易時間為台灣時間顯示
+                taiwan_date = transaction.transaction_date + timedelta(hours=8)
+                date_str = taiwan_date.strftime("%m-%d %H:%M")
+                
+                transaction_list.append({
+                    "id": transaction.id,
+                    "date": date_str,
+                    "category": category_name,
+                    "category_icon": category_icon,
+                    "amount": transaction.amount,
+                    "type": transaction_type,
+                    "type_text": type_text,
+                    "account": account_name,
+                    "note": transaction.note
+                })
+            
+            # 返回交易列表和匯總信息
+            summary = {
+                "period": period_text,
+                "total_expense": total_expense,
+                "total_income": total_income,
+                "net": total_income - total_expense
+            }
+            
+            return transaction_list, summary
+        
+        except Exception as e:
+            logger.error(f"獲取可編輯交易記錄失敗: {str(e)}")
+            return None, f"獲取記錄失敗，請稍後再試。錯誤: {str(e)}"
+
+    @staticmethod
+    def get_transaction_detail(user_id, transaction_id):
+        """獲取單筆交易的詳細信息"""
+        try:
+            # 查詢交易記錄
+            transaction = Transaction.query.filter_by(
+                id=transaction_id,
+                user_id=user_id
+            ).first()
+            
+            if not transaction:
+                return None, "找不到該筆交易記錄。"
+            
+            # 獲取類別和帳戶信息
+            category = Category.query.filter_by(id=transaction.category_id).first()
+            account = Account.query.filter_by(id=transaction.account_id).first()
+            
+            category_name = category.name if category else "未分類"
+            category_icon = category.icon if category else "📝"
+            account_name = account.name if account else "默認"
+            
+            transaction_type = "expense" if transaction.is_expense else "income"
+            type_text = "支出" if transaction.is_expense else "收入"
+            
+            # 轉換交易時間為台灣時間顯示
+            taiwan_date = transaction.transaction_date + timedelta(hours=8)
+            date_str = taiwan_date.strftime("%Y-%m-%d %H:%M")
+            
+            # 構建交易詳情
+            transaction_detail = {
+                "id": transaction.id,
+                "date": date_str,
+                "category": category_name,
+                "category_id": category.id if category else None,
+                "category_icon": category_icon,
+                "amount": transaction.amount,
+                "type": transaction_type,
+                "type_text": type_text,
+                "account": account_name,
+                "account_id": account.id if account else None,
+                "note": transaction.note,
+                "is_expense": transaction.is_expense
+            }
+            
+            return transaction_detail, None
+        
+        except Exception as e:
+            logger.error(f"獲取交易詳情失敗: {str(e)}")
+            return None, f"獲取交易詳情失敗，請稍後再試。錯誤: {str(e)}"
+
+    @staticmethod
+    def update_transaction(user_id, transaction_id, amount=None, category_id=None, account_id=None, note=None, is_expense=None):
+        """更新交易記錄"""
+        try:
+            # 查詢交易記錄
+            transaction = Transaction.query.filter_by(
+                id=transaction_id,
+                user_id=user_id
+            ).first()
+            
+            if not transaction:
+                return f"找不到ID為 {transaction_id} 的交易記錄。"
+            
+            # 獲取原始信息，用於記錄更改和更新帳戶餘額
+            original_amount = transaction.amount
+            original_is_expense = transaction.is_expense
+            original_account_id = transaction.account_id
+            
+            # 更新交易記錄
+            if amount is not None:
+                transaction.amount = amount
+            
+            if category_id is not None:
+                # 檢查類別是否存在
+                category = Category.query.filter_by(id=category_id, user_id=user_id).first()
+                if category:
+                    transaction.category_id = category_id
+                else:
+                    return f"找不到指定的類別。"
+            
+            if account_id is not None:
+                # 檢查帳戶是否存在
+                account = Account.query.filter_by(id=account_id, user_id=user_id).first()
+                if account:
+                    transaction.account_id = account_id
+                else:
+                    return f"找不到指定的帳戶。"
+            
+            if note is not None:
+                if note == "無" or note == "无":
+                    transaction.note = None
+                else:
+                    transaction.note = note
+            
+            if is_expense is not None:
+                transaction.is_expense = is_expense
+            
+            # 更新帳戶餘額
+            if (amount is not None or is_expense is not None or account_id is not None):
+                # 還原原始帳戶餘額
+                original_account = Account.query.filter_by(id=original_account_id).first()
+                if original_account:
+                    if original_is_expense:
+                        original_account.balance += original_amount  # 還原支出
+                    else:
+                        original_account.balance -= original_amount  # 還原收入
+                
+                # 更新新帳戶餘額
+                new_account_id = account_id if account_id is not None else original_account_id
+                new_account = Account.query.filter_by(id=new_account_id).first()
+                new_amount = amount if amount is not None else original_amount
+                new_is_expense = is_expense if is_expense is not None else original_is_expense
+                
+                if new_account:
+                    if new_is_expense:
+                        new_account.balance -= new_amount  # 支出減少餘額
+                    else:
+                        new_account.balance += new_amount  # 收入增加餘額
+            
+            # 提交更改
+            db.session.commit()
+            
+            # 取得更新後的類別和帳戶名稱
+            category = Category.query.filter_by(id=transaction.category_id).first()
+            account = Account.query.filter_by(id=transaction.account_id).first()
+            category_name = category.name if category else "未分類"
+            account_name = account.name if account else "默認"
+            
+            transaction_type = "支出" if transaction.is_expense else "收入"
+            
+            return f"已更新{transaction_type}記錄：{category_name} ${transaction.amount}，帳戶：{account_name}"
+        
+        except Exception as e:
+            logger.error(f"更新交易記錄失敗: {str(e)}")
+            db.session.rollback()
+            return f"更新失敗，請稍後再試。錯誤: {str(e)}"
+
+    @staticmethod
+    def delete_transaction(user_id, transaction_id):
+        """刪除交易記錄"""
+        try:
+            # 查詢交易記錄
+            transaction = Transaction.query.filter_by(
+                id=transaction_id,
+                user_id=user_id
+            ).first()
+            
+            if not transaction:
+                return f"找不到ID為 {transaction_id} 的交易記錄。"
+            
+            # 更新帳戶餘額
+            account = Account.query.filter_by(id=transaction.account_id).first()
+            if account:
+                if transaction.is_expense:
+                    account.balance += transaction.amount  # 刪除支出，增加餘額
+                else:
+                    account.balance -= transaction.amount  # 刪除收入，減少餘額
+            
+            # 刪除交易記錄
+            db.session.delete(transaction)
+            db.session.commit()
+            
+            return "交易記錄已成功刪除。"
+        
+        except Exception as e:
+            logger.error(f"刪除交易記錄失敗: {str(e)}")
+            db.session.rollback()
+            return f"刪除失敗，請稍後再試。錯誤: {str(e)}" 

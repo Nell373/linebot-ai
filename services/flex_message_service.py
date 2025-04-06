@@ -67,6 +67,34 @@ class FlexMessageService:
                                 flex=1
                             )
                         ]
+                    ),
+                    BoxComponent(
+                        layout="horizontal",
+                        margin="md",
+                        contents=[
+                            ButtonComponent(
+                                style="secondary",
+                                color="#F9A825",  # 金黃色按鈕
+                                action=PostbackAction(
+                                    label="記錄查詢",
+                                    display_text="查詢記錄",
+                                    data="action=view_transactions&period=today"
+                                ),
+                                height="sm",
+                                flex=1
+                            ),
+                            ButtonComponent(
+                                style="secondary",
+                                color="#4CAF50",  # 綠色按鈕
+                                action=MessageAction(
+                                    label="月度報表",
+                                    text="月報"
+                                ),
+                                height="sm",
+                                margin="md",
+                                flex=1
+                            )
+                        ]
                     )
                 ]
             )
@@ -81,6 +109,9 @@ class FlexMessageService:
                 ),
                 QuickReplyButton(
                     action=MessageAction(label="月度報表", text="月報")
+                ),
+                QuickReplyButton(
+                    action=MessageAction(label="編輯記錄", text="記錄")
                 )
             ])
         )
@@ -942,5 +973,840 @@ class FlexMessageService:
         
         return FlexSendMessage(
             alt_text="選擇支出類別",
+            contents=bubble
+        )
+
+    @staticmethod
+    def create_editable_transaction_list(transactions, summary):
+        """創建可編輯的交易記錄列表界面"""
+        transaction_items = []
+        
+        # 為每筆交易創建內容
+        for idx, transaction in enumerate(transactions[:10]):  # 限制顯示最近10筆，避免訊息過長
+            # 設置不同的背景顏色
+            bg_color = "#FFF8E1" if idx % 2 == 0 else "#FFF3CF"
+            
+            # 交易項目
+            item = BoxComponent(
+                layout="vertical",
+                backgroundColor=bg_color,
+                cornerRadius="md",
+                margin="sm",
+                paddingAll="10px",
+                action=PostbackAction(
+                    label=f"查看交易 {transaction['id']}",
+                    display_text=f"查看交易記錄 {transaction['id']}",
+                    data=f"action=view_transaction&id={transaction['id']}"
+                ),
+                contents=[
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            TextComponent(
+                                text=f"{transaction['category_icon']} {transaction['category']}",
+                                size="md",
+                                color="#5D4037",
+                                weight="bold",
+                                flex=4
+                            ),
+                            TextComponent(
+                                text=f"${transaction['amount']}",
+                                size="md",
+                                color="#EF6C00" if transaction['type'] == "expense" else "#4CAF50",
+                                align="end",
+                                weight="bold",
+                                flex=2
+                            )
+                        ]
+                    ),
+                    BoxComponent(
+                        layout="horizontal",
+                        margin="xs",
+                        contents=[
+                            TextComponent(
+                                text=transaction['date'],
+                                size="xs",
+                                color="#8D6E63",
+                                flex=2
+                            ),
+                            TextComponent(
+                                text=transaction['account'],
+                                size="xs",
+                                color="#8D6E63",
+                                align="end",
+                                flex=2
+                            )
+                        ]
+                    )
+                ]
+            )
+            
+            # 如果有備註，添加備註
+            if transaction['note']:
+                item.contents.append(
+                    TextComponent(
+                        text=f"備註: {transaction['note']}",
+                        size="xs",
+                        color="#8D6E63",
+                        margin="xs",
+                        wrap=True
+                    )
+                )
+            
+            transaction_items.append(item)
+        
+        if not transaction_items:
+            transaction_items.append(
+                BoxComponent(
+                    layout="vertical",
+                    backgroundColor="#FFF8E1",
+                    cornerRadius="md",
+                    margin="sm",
+                    paddingAll="10px",
+                    contents=[
+                        TextComponent(
+                            text="沒有交易記錄",
+                            size="md",
+                            color="#8D6E63",
+                            align="center"
+                        )
+                    ]
+                )
+            )
+        
+        bubble = BubbleContainer(
+            header=BoxComponent(
+                layout="vertical",
+                backgroundColor="#F9A825",  # 金黃色
+                paddingAll="10px",
+                contents=[
+                    TextComponent(
+                        text=f"{summary['period']}的交易記錄",
+                        color="#FFFFFF",
+                        weight="bold",
+                        size="lg",
+                        align="center"
+                    )
+                ]
+            ),
+            body=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFFDE7",  # 更淡的黃色
+                paddingAll="10px",
+                contents=[
+                    # 總計信息
+                    BoxComponent(
+                        layout="vertical",
+                        backgroundColor="#FFF8E1",
+                        cornerRadius="md",
+                        paddingAll="10px",
+                        contents=[
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="總支出", size="sm", color="#8D6E63", flex=1),
+                                    TextComponent(text=f"${summary['total_expense']}", size="sm", color="#EF6C00", align="end", flex=1)
+                                ]
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="總收入", size="sm", color="#8D6E63", flex=1),
+                                    TextComponent(text=f"${summary['total_income']}", size="sm", color="#4CAF50", align="end", flex=1)
+                                ],
+                                margin="xs"
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="結餘", size="sm", color="#5D4037", weight="bold", flex=1),
+                                    TextComponent(
+                                        text=f"${summary['net']}",
+                                        size="sm",
+                                        color="#4CAF50" if summary['net'] >= 0 else "#EF6C00",
+                                        align="end",
+                                        weight="bold",
+                                        flex=1
+                                    )
+                                ],
+                                margin="xs"
+                            )
+                        ]
+                    ),
+                    # 分隔線
+                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    # 交易記錄標題
+                    TextComponent(
+                        text="點擊項目可查看詳情並編輯",
+                        size="xs",
+                        color="#8D6E63",
+                        align="center",
+                        margin="md"
+                    )
+                ] + transaction_items
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFFDE7",  # 更淡的黃色
+                contents=[
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            ButtonComponent(
+                                style="secondary",
+                                color="#A1887F",  # 褐色
+                                action=PostbackAction(
+                                    label="返回",
+                                    display_text="返回主選單",
+                                    data="action=main_menu"
+                                ),
+                                height="sm",
+                                flex=1
+                            ),
+                            ButtonComponent(
+                                style="primary",
+                                color="#F9A825",  # 金黃色
+                                action=MessageAction(
+                                    label="新增記錄",
+                                    text="kimi"
+                                ),
+                                height="sm",
+                                flex=1,
+                                margin="sm"
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text=f"{summary['period']}的交易記錄",
+            contents=bubble
+        )
+
+    @staticmethod
+    def create_transaction_detail(transaction):
+        """創建交易詳情界面"""
+        # 設置顏色和標題
+        is_expense = transaction['is_expense']
+        header_color = "#EF6C00" if is_expense else "#4CAF50"  # 深橙色/綠色
+        header_title = "支出詳情" if is_expense else "收入詳情"
+        
+        bubble = BubbleContainer(
+            header=BoxComponent(
+                layout="vertical",
+                backgroundColor=header_color,
+                paddingAll="10px",
+                contents=[
+                    TextComponent(
+                        text=header_title,
+                        color="#FFFFFF",
+                        weight="bold",
+                        size="lg",
+                        align="center"
+                    ),
+                    TextComponent(
+                        text=f"ID: {transaction['id']}",
+                        color="#FFFFFF",
+                        size="xs",
+                        align="center"
+                    )
+                ]
+            ),
+            body=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFF8E1",  # 淡黃色背景
+                paddingAll="15px",
+                contents=[
+                    # 類別
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            TextComponent(text="類別", size="md", color="#8D6E63", flex=1),
+                            TextComponent(
+                                text=f"{transaction['category_icon']} {transaction['category']}",
+                                size="md",
+                                color="#5D4037",
+                                weight="bold",
+                                align="end",
+                                flex=2
+                            )
+                        ],
+                        margin="md"
+                    ),
+                    # 金額
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            TextComponent(text="金額", size="md", color="#8D6E63", flex=1),
+                            TextComponent(
+                                text=f"${transaction['amount']}",
+                                size="md",
+                                color=header_color,
+                                weight="bold",
+                                align="end",
+                                flex=2
+                            )
+                        ],
+                        margin="md"
+                    ),
+                    # 帳戶
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            TextComponent(text="帳戶", size="md", color="#8D6E63", flex=1),
+                            TextComponent(
+                                text=transaction['account'],
+                                size="md",
+                                color="#5D4037",
+                                align="end",
+                                flex=2
+                            )
+                        ],
+                        margin="md"
+                    ),
+                    # 時間
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            TextComponent(text="時間", size="md", color="#8D6E63", flex=1),
+                            TextComponent(
+                                text=transaction['date'],
+                                size="md",
+                                color="#5D4037",
+                                align="end",
+                                flex=2
+                            )
+                        ],
+                        margin="md"
+                    ),
+                    # 備註
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            TextComponent(text="備註", size="md", color="#8D6E63", flex=1),
+                            TextComponent(
+                                text=transaction['note'] if transaction['note'] else "無",
+                                size="md",
+                                color="#5D4037",
+                                align="end",
+                                flex=2,
+                                wrap=True
+                            )
+                        ],
+                        margin="md"
+                    ),
+                    # 分隔線
+                    SeparatorComponent(margin="xl", color="#D7CCC8")
+                ]
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFF8E1",  # 淡黃色背景
+                contents=[
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            ButtonComponent(
+                                style="secondary",
+                                color="#A1887F",  # 褐色
+                                action=PostbackAction(
+                                    label="返回",
+                                    display_text="返回交易列表",
+                                    data="action=view_transactions&period=today"
+                                ),
+                                height="sm",
+                                flex=1
+                            ),
+                            ButtonComponent(
+                                style="primary",
+                                color="#F9A825",  # 金黃色
+                                action=PostbackAction(
+                                    label="修改",
+                                    display_text=f"修改交易 {transaction['id']}",
+                                    data=f"action=edit_transaction&id={transaction['id']}"
+                                ),
+                                height="sm",
+                                flex=1,
+                                margin="sm"
+                            )
+                        ]
+                    ),
+                    ButtonComponent(
+                        style="secondary",
+                        color="#D32F2F",  # 紅色
+                        action=PostbackAction(
+                            label="刪除",
+                            display_text=f"刪除交易 {transaction['id']}",
+                            data=f"action=confirm_delete&id={transaction['id']}"
+                        ),
+                        height="sm",
+                        margin="md"
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text=f"{transaction['type_text']}詳情",
+            contents=bubble
+        )
+
+    @staticmethod
+    def create_edit_transaction_form(transaction, categories, accounts):
+        """創建編輯交易的表單界面"""
+        # 設置顏色和標題
+        is_expense = transaction['is_expense']
+        header_color = "#EF6C00" if is_expense else "#4CAF50"  # 深橙色/綠色
+        header_title = "修改支出" if is_expense else "修改收入"
+        
+        # 創建類別選擇按鈕
+        category_buttons = []
+        for category in categories:
+            bg_color = "#F9A825" if category.id == transaction['category_id'] else "#FFFFFF"
+            text_color = "#FFFFFF" if category.id == transaction['category_id'] else "#5D4037"
+            
+            category_buttons.append(
+                BoxComponent(
+                    layout="vertical",
+                    action=PostbackAction(
+                        label=category.name,
+                        display_text=f"修改類別為：{category.name}",
+                        data=f"action=update_category&id={transaction['id']}&category_id={category.id}"
+                    ),
+                    backgroundColor=bg_color,
+                    cornerRadius="md",
+                    paddingAll="8px",
+                    width="30%",
+                    height="60px",
+                    margin="xs",
+                    contents=[
+                        TextComponent(
+                            text=category.icon,
+                            size="lg",
+                            align="center",
+                            color=text_color
+                        ),
+                        TextComponent(
+                            text=category.name,
+                            size="xs",
+                            align="center",
+                            color=text_color
+                        )
+                    ]
+                )
+            )
+        
+        # 分組顯示類別 (每行3個)
+        grouped_categories = []
+        for i in range(0, len(category_buttons), 3):
+            group = category_buttons[i:i+3]
+            row = BoxComponent(
+                layout="horizontal",
+                margin="xs",
+                contents=group
+            )
+            grouped_categories.append(row)
+        
+        # 創建帳戶選擇按鈕
+        account_buttons = []
+        for account in accounts:
+            bg_color = "#F9A825" if account.id == transaction['account_id'] else "#FFFFFF"
+            text_color = "#FFFFFF" if account.id == transaction['account_id'] else "#5D4037"
+            
+            account_buttons.append(
+                ButtonComponent(
+                    style="secondary",
+                    color=bg_color,
+                    action=PostbackAction(
+                        label=account.name,
+                        display_text=f"修改帳戶為：{account.name}",
+                        data=f"action=update_account&id={transaction['id']}&account_id={account.id}"
+                    ),
+                    height="sm",
+                    margin="xs"
+                )
+            )
+        
+        bubble = BubbleContainer(
+            header=BoxComponent(
+                layout="vertical",
+                backgroundColor=header_color,
+                paddingAll="10px",
+                contents=[
+                    TextComponent(
+                        text=header_title,
+                        color="#FFFFFF",
+                        weight="bold",
+                        size="lg",
+                        align="center"
+                    ),
+                    TextComponent(
+                        text=f"ID: {transaction['id']}",
+                        color="#FFFFFF",
+                        size="xs",
+                        align="center"
+                    )
+                ]
+            ),
+            body=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFF8E1",  # 淡黃色背景
+                paddingAll="15px",
+                contents=[
+                    # 當前值顯示
+                    BoxComponent(
+                        layout="vertical",
+                        backgroundColor="#FFFDE7",
+                        cornerRadius="md",
+                        paddingAll="10px",
+                        contents=[
+                            TextComponent(
+                                text="當前值",
+                                size="xs",
+                                color="#8D6E63",
+                                weight="bold"
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="類別", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(
+                                        text=transaction['category'],
+                                        size="xs",
+                                        color="#5D4037",
+                                        align="end",
+                                        flex=2
+                                    )
+                                ],
+                                margin="xs"
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="金額", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(
+                                        text=f"${transaction['amount']}",
+                                        size="xs",
+                                        color=header_color,
+                                        align="end",
+                                        flex=2
+                                    )
+                                ],
+                                margin="xs"
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="帳戶", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(
+                                        text=transaction['account'],
+                                        size="xs",
+                                        color="#5D4037",
+                                        align="end",
+                                        flex=2
+                                    )
+                                ],
+                                margin="xs"
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="備註", size="xs", color="#8D6E63", flex=1),
+                                    TextComponent(
+                                        text=transaction['note'] if transaction['note'] else "無",
+                                        size="xs",
+                                        color="#5D4037",
+                                        align="end",
+                                        flex=2,
+                                        wrap=True
+                                    )
+                                ],
+                                margin="xs"
+                            )
+                        ]
+                    ),
+                    # 分隔線
+                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    # 編輯選項
+                    TextComponent(
+                        text="選擇類別",
+                        size="md",
+                        color="#5D4037",
+                        weight="bold",
+                        margin="md"
+                    )
+                ] + grouped_categories + [
+                    # 分隔線
+                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    # 帳戶選擇
+                    TextComponent(
+                        text="選擇帳戶",
+                        size="md",
+                        color="#5D4037",
+                        weight="bold",
+                        margin="md"
+                    ),
+                    BoxComponent(
+                        layout="vertical",
+                        margin="sm",
+                        contents=account_buttons
+                    ),
+                    # 分隔線
+                    SeparatorComponent(margin="md", color="#D7CCC8"),
+                    # 修改金額和備註的按鈕
+                    BoxComponent(
+                        layout="horizontal",
+                        margin="md",
+                        contents=[
+                            ButtonComponent(
+                                style="primary",
+                                color="#F9A825",  # 金黃色
+                                action=PostbackAction(
+                                    label="修改金額",
+                                    display_text=f"修改交易 {transaction['id']} 金額",
+                                    data=f"action=edit_amount&id={transaction['id']}"
+                                ),
+                                height="sm",
+                                flex=1
+                            ),
+                            ButtonComponent(
+                                style="primary",
+                                color="#F9A825",  # 金黃色
+                                action=PostbackAction(
+                                    label="修改備註",
+                                    display_text=f"修改交易 {transaction['id']} 備註",
+                                    data=f"action=edit_note&id={transaction['id']}"
+                                ),
+                                height="sm",
+                                flex=1,
+                                margin="sm"
+                            )
+                        ]
+                    )
+                ]
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFF8E1",  # 淡黃色背景
+                contents=[
+                    ButtonComponent(
+                        style="secondary",
+                        color="#A1887F",  # 褐色
+                        action=PostbackAction(
+                            label="返回詳情",
+                            display_text=f"查看交易 {transaction['id']}",
+                            data=f"action=view_transaction&id={transaction['id']}"
+                        ),
+                        height="sm"
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text=f"修改{transaction['type_text']}",
+            contents=bubble
+        )
+
+    @staticmethod
+    def create_confirm_delete(transaction_id, category, amount, date):
+        """創建刪除確認界面"""
+        bubble = BubbleContainer(
+            body=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFE0E0",  # 淡紅色背景
+                paddingAll="15px",
+                contents=[
+                    TextComponent(
+                        text="確認刪除交易記錄",
+                        size="lg",
+                        color="#D32F2F",  # 紅色
+                        weight="bold",
+                        align="center"
+                    ),
+                    BoxComponent(
+                        layout="vertical",
+                        margin="md",
+                        contents=[
+                            TextComponent(
+                                text="您確定要刪除以下交易記錄嗎？",
+                                size="md",
+                                color="#5D4037",
+                                wrap=True
+                            ),
+                            TextComponent(
+                                text="此操作無法撤銷。",
+                                size="sm",
+                                color="#D32F2F",  # 紅色
+                                margin="sm"
+                            ),
+                            BoxComponent(
+                                layout="vertical",
+                                backgroundColor="#FFFFFF",
+                                cornerRadius="md",
+                                margin="md",
+                                paddingAll="10px",
+                                contents=[
+                                    TextComponent(
+                                        text=f"ID: {transaction_id}",
+                                        size="xs",
+                                        color="#8D6E63"
+                                    ),
+                                    TextComponent(
+                                        text=f"類別: {category}",
+                                        size="md",
+                                        color="#5D4037",
+                                        margin="xs"
+                                    ),
+                                    TextComponent(
+                                        text=f"金額: ${amount}",
+                                        size="md",
+                                        color="#5D4037",
+                                        margin="xs"
+                                    ),
+                                    TextComponent(
+                                        text=f"日期: {date}",
+                                        size="xs",
+                                        color="#8D6E63",
+                                        margin="xs"
+                                    )
+                                ]
+                            )
+                        ]
+                    )
+                ]
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFE0E0",  # 淡紅色背景
+                contents=[
+                    BoxComponent(
+                        layout="horizontal",
+                        contents=[
+                            ButtonComponent(
+                                style="secondary",
+                                color="#A1887F",  # 褐色
+                                action=PostbackAction(
+                                    label="取消",
+                                    display_text=f"取消刪除交易 {transaction_id}",
+                                    data=f"action=view_transaction&id={transaction_id}"
+                                ),
+                                height="sm",
+                                flex=1
+                            ),
+                            ButtonComponent(
+                                style="primary",
+                                color="#D32F2F",  # 紅色
+                                action=PostbackAction(
+                                    label="確認刪除",
+                                    display_text=f"確認刪除交易 {transaction_id}",
+                                    data=f"action=delete_transaction&id={transaction_id}"
+                                ),
+                                height="sm",
+                                flex=1,
+                                margin="sm"
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text="確認刪除交易記錄",
+            contents=bubble
+        )
+
+    @staticmethod
+    def create_transaction_period_selection():
+        """創建交易記錄時間範圍選擇界面"""
+        bubble = BubbleContainer(
+            header=BoxComponent(
+                layout="vertical",
+                backgroundColor="#F9A825",  # 金黃色
+                paddingAll="10px",
+                contents=[
+                    TextComponent(
+                        text="選擇查詢時間範圍",
+                        color="#FFFFFF",
+                        weight="bold",
+                        size="lg",
+                        align="center"
+                    )
+                ]
+            ),
+            body=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFF8E1",  # 淡黃色背景
+                paddingAll="15px",
+                contents=[
+                    ButtonComponent(
+                        style="primary",
+                        color="#F9A825",  # 金黃色
+                        action=PostbackAction(
+                            label="今天",
+                            display_text="查詢今天的交易記錄",
+                            data="action=view_transactions&period=today"
+                        ),
+                        height="sm",
+                        margin="md"
+                    ),
+                    ButtonComponent(
+                        style="primary",
+                        color="#F9A825",  # 金黃色
+                        action=PostbackAction(
+                            label="昨天",
+                            display_text="查詢昨天的交易記錄",
+                            data="action=view_transactions&period=yesterday"
+                        ),
+                        height="sm",
+                        margin="md"
+                    ),
+                    ButtonComponent(
+                        style="primary",
+                        color="#F9A825",  # 金黃色
+                        action=PostbackAction(
+                            label="本週",
+                            display_text="查詢本週的交易記錄",
+                            data="action=view_transactions&period=week"
+                        ),
+                        height="sm",
+                        margin="md"
+                    ),
+                    ButtonComponent(
+                        style="primary",
+                        color="#F9A825",  # 金黃色
+                        action=PostbackAction(
+                            label="本月",
+                            display_text="查詢本月的交易記錄",
+                            data="action=view_transactions&period=month"
+                        ),
+                        height="sm",
+                        margin="md"
+                    )
+                ]
+            ),
+            footer=BoxComponent(
+                layout="vertical",
+                backgroundColor="#FFF8E1",  # 淡黃色背景
+                contents=[
+                    ButtonComponent(
+                        style="secondary",
+                        color="#A1887F",  # 褐色
+                        action=PostbackAction(
+                            label="返回",
+                            display_text="返回主選單",
+                            data="action=main_menu"
+                        ),
+                        height="sm"
+                    )
+                ]
+            )
+        )
+        
+        return FlexSendMessage(
+            alt_text="選擇查詢時間範圍",
             contents=bubble
         ) 

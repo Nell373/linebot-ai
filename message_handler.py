@@ -113,6 +113,51 @@ def process_message(event):
                     return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
                 except ValueError:
                     return "請輸入有效的數字金額。"
+            elif state.get('waiting_for') == 'edit_amount':
+                # 用戶正在編輯交易金額
+                try:
+                    transaction_id = state.get('transaction_id')
+                    new_amount = float(message_text)
+                    
+                    # 更新交易記錄
+                    result = FinanceService.update_transaction(
+                        user_id=user_id,
+                        transaction_id=transaction_id,
+                        amount=new_amount
+                    )
+                    
+                    # 清除用戶狀態
+                    del user_states[user_id]
+                    
+                    # 返回詳情頁面
+                    transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+                    if error:
+                        return error
+                    
+                    return FlexMessageService.create_transaction_detail(transaction_detail)
+                except ValueError:
+                    return "請輸入有效的數字金額，例如: 100 或 1,234.56"
+            elif state.get('waiting_for') == 'edit_note':
+                # 用戶正在編輯交易備註
+                transaction_id = state.get('transaction_id')
+                new_note = message_text
+                
+                # 更新交易記錄
+                result = FinanceService.update_transaction(
+                    user_id=user_id,
+                    transaction_id=transaction_id,
+                    note=new_note
+                )
+                
+                # 清除用戶狀態
+                del user_states[user_id]
+                
+                # 返回詳情頁面
+                transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+                if error:
+                    return error
+                
+                return FlexMessageService.create_transaction_detail(transaction_detail)
         
         # 處理特殊命令
         if message_text.lower() == 'kimi':
@@ -125,6 +170,10 @@ def process_message(event):
         # 處理初始化命令
         if message_text.lower() in ['初始化', 'init']:
             return FinanceService.initialize_user(user_id)
+        
+        # 處理記錄查詢命令
+        if message_text.lower() in ['記錄', '編輯記錄', '查看記錄']:
+            return FlexMessageService.create_transaction_period_selection()
         
         # 嘗試處理財務相關命令
         finance_response = FinanceService.process_finance_command(message_text, user_id)
@@ -251,9 +300,11 @@ def get_help_text():
         "📝 使用說明 📝",
         "=== 記帳功能 ===",
         "記錄支出：早餐50 或 午餐120 麥當勞",
-        "記錄收入：收入5000 薪資",
+        "記錄收入：收入5000 或 薪資+33000",
+        "快速支出：早餐-50 (自動帶入類別選擇)",
         "查詢記錄：今天 或 本週 或 本月",
         "查看統計：月報 或 月報2023-5",
+        "記錄修改：輸入「記錄」查看並修改交易",
         "互動操作：輸入 kimi 啟動互動式選單",
         "",
         "=== 任務功能 ===",
@@ -681,6 +732,135 @@ def handle_postback(event):
         elif action == 'main_menu':
             # 返回主選單
             response = FlexMessageService.create_main_menu()
+        
+        # 交易記錄管理相關操作
+        elif action == 'view_transactions':
+            # 查看交易記錄列表
+            period = params.get('period', 'today')
+            transaction_list, summary = FinanceService.get_editable_transactions(user_id, period)
+            
+            if transaction_list:
+                response = FlexMessageService.create_editable_transaction_list(transaction_list, summary)
+            else:
+                response = summary  # 返回錯誤信息
+        
+        elif action == 'view_transaction':
+            # 查看單筆交易詳情
+            transaction_id = int(params.get('id'))
+            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+            
+            if transaction_detail:
+                response = FlexMessageService.create_transaction_detail(transaction_detail)
+            else:
+                response = error
+        
+        elif action == 'edit_transaction':
+            # 修改交易記錄
+            transaction_id = int(params.get('id'))
+            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+            
+            if not transaction_detail:
+                response = error
+            else:
+                # 獲取用戶的類別和帳戶列表
+                from models import Category, Account
+                is_expense = transaction_detail['is_expense']
+                
+                categories = Category.query.filter_by(
+                    user_id=user_id,
+                    is_expense=is_expense
+                ).all()
+                
+                accounts = Account.query.filter_by(user_id=user_id).all()
+                
+                response = FlexMessageService.create_edit_transaction_form(
+                    transaction_detail, categories, accounts
+                )
+        
+        elif action == 'update_category':
+            # 更新交易類別
+            transaction_id = int(params.get('id'))
+            category_id = int(params.get('category_id'))
+            
+            result = FinanceService.update_transaction(
+                user_id=user_id,
+                transaction_id=transaction_id,
+                category_id=category_id
+            )
+            
+            # 更新後重新獲取交易詳情
+            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+            
+            if transaction_detail:
+                response = FlexMessageService.create_transaction_detail(transaction_detail)
+            else:
+                response = result
+        
+        elif action == 'update_account':
+            # 更新交易帳戶
+            transaction_id = int(params.get('id'))
+            account_id = int(params.get('account_id'))
+            
+            result = FinanceService.update_transaction(
+                user_id=user_id,
+                transaction_id=transaction_id,
+                account_id=account_id
+            )
+            
+            # 更新後重新獲取交易詳情
+            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+            
+            if transaction_detail:
+                response = FlexMessageService.create_transaction_detail(transaction_detail)
+            else:
+                response = result
+        
+        elif action == 'edit_amount':
+            # 修改交易金額
+            transaction_id = int(params.get('id'))
+            
+            # 設置用戶狀態
+            user_states[user_id] = {
+                'waiting_for': 'edit_amount',
+                'transaction_id': transaction_id
+            }
+            
+            response = "請輸入新的交易金額："
+        
+        elif action == 'edit_note':
+            # 修改交易備註
+            transaction_id = int(params.get('id'))
+            
+            # 設置用戶狀態
+            user_states[user_id] = {
+                'waiting_for': 'edit_note',
+                'transaction_id': transaction_id
+            }
+            
+            response = "請輸入新的備註文字（輸入「無」清除備註）："
+        
+        elif action == 'confirm_delete':
+            # 確認刪除交易
+            transaction_id = int(params.get('id'))
+            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
+            
+            if transaction_detail:
+                response = FlexMessageService.create_confirm_delete(
+                    transaction_id,
+                    transaction_detail['category'],
+                    transaction_detail['amount'],
+                    transaction_detail['date']
+                )
+            else:
+                response = error
+        
+        elif action == 'delete_transaction':
+            # 刪除交易記錄
+            transaction_id = int(params.get('id'))
+            result = FinanceService.delete_transaction(user_id, transaction_id)
+            
+            # 顯示結果消息之後返回交易列表
+            response = f"{result}\n查詢更多交易請發送「記錄」"
         
         else:
             response = "未知的操作。"
