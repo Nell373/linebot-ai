@@ -266,29 +266,6 @@ class FlexMessageService:
             
             keypad_rows.append(button_row)
         
-        # 快速金額選擇
-        quick_amounts = [100, 200, 500, 1000] if is_expense else [5000, 10000, 20000, 50000]
-        quick_amount_buttons = BoxComponent(
-            layout="horizontal",
-            margin="md",
-            contents=[]
-        )
-        
-        for amount in quick_amounts:
-            quick_amount_buttons.contents.append(
-                ButtonComponent(
-                    style="secondary",
-                    color=type_color,
-                    action=PostbackAction(
-                        label=str(amount),
-                        display_text=f"金額：{amount}",
-                        data=f"action=amount&type={transaction_type}&category={category}&amount={amount}"
-                    ),
-                    height="sm",
-                    margin="xs"
-                )
-            )
-        
         bubble = BubbleContainer(
             header=BoxComponent(
                 layout="vertical",
@@ -322,12 +299,12 @@ class FlexMessageService:
                         margin="md"
                     ),
                     TextComponent(
-                        text="快速金額選擇",
-                        size="md",
-                        weight="bold",
-                        margin="lg"
+                        text="按下數字後會顯示預覽金額",
+                        size="sm",
+                        color="#888888",
+                        align="center",
+                        margin="sm"
                     ),
-                    quick_amount_buttons,
                     TextComponent(
                         text="數字鍵盤",
                         size="md",
