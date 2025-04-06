@@ -124,9 +124,9 @@ class FinanceService:
             if not account:
                 account = Account.query.filter_by(user_id=user_id, name="默認").first()
             
-            # 獲取當前的 UTC 時間並轉換為台灣時區 (UTC+8)
+            # 使用 UTC 時間直接存儲，不轉換為台灣時間
+            # Fly.io 服務可能已經在日本或台灣區域，會有時區影響
             utc_now = datetime.utcnow()
-            taiwan_time = utc_now + timedelta(hours=8)
             
             # 創建交易記錄
             transaction = Transaction(
@@ -134,7 +134,7 @@ class FinanceService:
                 amount=amount,
                 category_id=category.id,
                 account_id=account.id,
-                transaction_date=taiwan_time,
+                transaction_date=utc_now,  # 使用 UTC 時間
                 note=note,
                 is_expense=is_expense
             )
@@ -165,24 +165,26 @@ class FinanceService:
     def get_transactions(user_id, period="today"):
         """獲取用戶的交易記錄"""
         try:
-            # 設置時間範圍，並轉換為台灣時區（UTC+8）
+            # 設置時間範圍，使用 UTC 時間
             utc_now = datetime.utcnow()
-            now = utc_now + timedelta(hours=8)
+            # 轉換為台灣時間進行顯示，但查詢條件仍使用 UTC
+            taiwan_now = utc_now + timedelta(hours=8)
             
             if period == "today":
-                start_date = datetime(now.year, now.month, now.day) - timedelta(hours=8)  # 轉回UTC以匹配數據庫
+                # 創建台灣時間當天的0點，然後轉換回 UTC 時間
+                start_date = datetime(taiwan_now.year, taiwan_now.month, taiwan_now.day) - timedelta(hours=8)
                 period_text = "今天"
             elif period == "yesterday":
-                yesterday = now - timedelta(days=1)
+                yesterday = taiwan_now - timedelta(days=1)
                 start_date = datetime(yesterday.year, yesterday.month, yesterday.day) - timedelta(hours=8)
                 period_text = "昨天"
             elif period == "week":
-                # 獲取本週一的日期
-                monday = now - timedelta(days=now.weekday())
+                # 獲取本週一的日期 (台灣時間)
+                monday = taiwan_now - timedelta(days=taiwan_now.weekday())
                 start_date = datetime(monday.year, monday.month, monday.day) - timedelta(hours=8)
                 period_text = "本週"
             elif period == "month":
-                start_date = datetime(now.year, now.month, 1) - timedelta(hours=8)
+                start_date = datetime(taiwan_now.year, taiwan_now.month, 1) - timedelta(hours=8)
                 period_text = "本月"
             else:
                 return "無效的時間範圍，請使用：今天、昨天、本週、本月"
@@ -214,7 +216,8 @@ class FinanceService:
                 category_icon = category.icon if category else "📝"
                 
                 transaction_type = "支出" if transaction.is_expense else "收入"
-                # 轉換交易時間為台灣時間
+                
+                # 轉換交易時間為台灣時間顯示
                 taiwan_date = transaction.transaction_date + timedelta(hours=8)
                 date_str = taiwan_date.strftime("%m-%d %H:%M")
                 
@@ -236,11 +239,12 @@ class FinanceService:
         try:
             # 如果未指定年月，使用當前月份（台灣時間）
             utc_now = datetime.utcnow()
-            now = utc_now + timedelta(hours=8)
-            year = year or now.year
-            month = month or now.month
+            taiwan_now = utc_now + timedelta(hours=8)
+            year = year or taiwan_now.year
+            month = month or taiwan_now.month
             
             # 設置時間範圍（轉換回UTC時間以匹配數據庫）
+            # 創建台灣時間當月的1號，然後轉換回 UTC 時間
             start_date = datetime(year, month, 1) - timedelta(hours=8)
             if month == 12:
                 end_date = datetime(year + 1, 1, 1) - timedelta(hours=8)
