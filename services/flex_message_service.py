@@ -28,8 +28,10 @@ import urllib.parse
 logger = logging.getLogger(__name__)
 
 # 從環境變數獲取 LIFF_ID
-LIFF_ID = os.environ.get('LIFF_ID', '')
+LIFF_ID = os.environ.get('LIFF_ID', '1654912345-AbCdEfGh')
 LIFF_URL = f"https://liff.line.me/{LIFF_ID}"
+
+logger.info(f"使用 LIFF URL: {LIFF_URL}")
 
 class FlexMessageService:
     @staticmethod
