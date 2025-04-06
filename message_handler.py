@@ -12,15 +12,17 @@ from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
     FlexSendMessage, BubbleContainer, BoxComponent,
     TextComponent, ButtonComponent, MessageAction,
-    PostbackEvent, PostbackAction
+    PostbackEvent, PostbackAction, URIAction
 )
 from datetime import datetime, timedelta
 import re
 import json
+import traceback
 
 # 導入服務模組
 from services.finance_service import FinanceService
 from services.flex_message_service import FlexMessageService
+from services.task_service import TaskService
 
 # 設置日誌
 logging.basicConfig(
@@ -703,474 +705,216 @@ def handle_message(event):
     try:
         user_id = event.source.user_id
         message_text = event.message.text
-        logger.info(f"收到訊息: {message_text} 從用戶: {user_id}")
+        logger.info(f"收到訊息: '{message_text}' 從用戶: {user_id}")
         
-        # 直接處理特殊命令 - 不區分大小寫
+        # 簡化的指令處理 - 不區分大小寫
         lower_text = message_text.lower()
         
-        # 直接處理 kimi 和主選單命令
-        if lower_text in ["kimi", "kimi flex", "kimi主選單", "主選單"]:
-            logger.info(f"檢測到主選單命令: {message_text}")
+        # 處理 kimi 指令 - 顯示主選單
+        if lower_text in ["kimi", "kimi flex", "主選單", "kimi主選單"]:
+            logger.info(f"用戶 {user_id} 請求顯示主選單, 命令: '{message_text}'")
+            
+            # 創建一個簡化版的 Flex 消息
+            bubble = {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "backgroundColor": "#FFFBE6",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": "Kimi 助手",
+                            "weight": "bold",
+                            "size": "xl",
+                            "align": "center",
+                            "color": "#595959"
+                        },
+                        {
+                            "type": "text",
+                            "text": "請選擇功能",
+                            "size": "md",
+                            "color": "#8C8C8C",
+                            "align": "center",
+                            "margin": "md"
+                        },
+                        {
+                            "type": "separator",
+                            "margin": "xl",
+                            "color": "#D9D9D9"
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "margin": "md",
+                            "contents": [
+                                {
+                                    "type": "button",
+                                    "style": "primary",
+                                    "color": "#FFC940",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "記帳",
+                                        "displayText": "記帳",
+                                        "data": "action=record&type=expense"
+                                    },
+                                    "height": "sm",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "button",
+                                    "style": "primary",
+                                    "color": "#FAAD14",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "任務",
+                                        "displayText": "任務管理",
+                                        "data": "action=task_menu"
+                                    },
+                                    "height": "sm",
+                                    "margin": "md",
+                                    "flex": 1
+                                }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "margin": "md",
+                            "contents": [
+                                {
+                                    "type": "button",
+                                    "style": "secondary",
+                                    "color": "#FFC940",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "記錄查詢",
+                                        "displayText": "查詢記錄",
+                                        "data": "action=view_transactions&period=today"
+                                    },
+                                    "height": "sm",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "button",
+                                    "style": "secondary",
+                                    "color": "#FAAD14",
+                                    "action": {
+                                        "type": "message",
+                                        "label": "月度報表",
+                                        "text": "月報"
+                                    },
+                                    "height": "sm",
+                                    "margin": "md",
+                                    "flex": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+            
+            # 直接發送 Flex 消息
             try:
-                menu = FlexMessageService.create_main_menu()
-                line_bot_api.reply_message(event.reply_token, menu)
-                logger.info("成功發送主選單")
+                flex_message = FlexSendMessage(alt_text="Kimi 助手選單", contents=bubble)
+                line_bot_api.reply_message(event.reply_token, flex_message)
+                logger.info(f"已發送 Flex 消息給用戶 {user_id}")
                 return
-            except Exception as e:
-                logger.error(f"發送主選單失敗: {str(e)}")
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"顯示主選單時發生錯誤: {str(e)}"))
+            except Exception as flex_error:
+                logger.error(f"發送 Flex 消息失敗: {str(flex_error)}")
+                error_details = traceback.format_exc()
+                logger.error(f"詳細錯誤: {error_details}")
+                # 嘗試發送文字消息作為備用
+                line_bot_api.reply_message(
+                    event.reply_token, 
+                    TextSendMessage(text=f"無法顯示選單，請稍後再試。錯誤: {str(flex_error)[:30]}...")
+                )
                 return
         
-        # 處理其他訊息
-        response = process_message(event)
-        logger.info(f"處理完成，準備回應用戶 {user_id}")
-        
-        # 檢查是否為 FlexSendMessage 類型
-        if isinstance(response, FlexSendMessage):
-            logger.info("準備發送 Flex 訊息")
-            line_bot_api.reply_message(event.reply_token, response)
-            logger.info(f"已發送 Flex 訊息給用戶 {user_id}")
-        elif response:
-            logger.info(f"準備發送文字訊息: {response[:30]}...")
+        # 測試命令
+        if lower_text == "kimi test":
+            # 測試 LINE API 連接
+            bot_info = line_bot_api.get_bot_info()
+            response = f"API 連接正常!\nBot名稱: {bot_info.display_name}\n"
+            response += f"TOKEN前10字元: {os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', '')[:10]}...\n"
+            response += f"SECRET前10字元: {os.environ.get('LINE_CHANNEL_SECRET', '')[:10]}..."
+            
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
-            logger.info(f"已發送文字訊息給用戶 {user_id}")
+            return
+        
+        # 其他訊息處理
+        response = process_message(event)
+        
+        if isinstance(response, FlexSendMessage):
+            line_bot_api.reply_message(event.reply_token, response)
+        elif response:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+        else:
+            # 默認回應
+            line_bot_api.reply_message(
+                event.reply_token, 
+                TextSendMessage(text="我不太理解您的意思。您可以輸入「kimi」查看主選單，或「help」查看幫助。")
+            )
     
     except Exception as e:
-        logger.error(f"處理訊息發生錯誤: {str(e)}")
+        logger.error(f"處理訊息時發生錯誤: {str(e)}")
+        logger.error(traceback.format_exc())
         try:
-            error_message = f"處理您的請求時發生錯誤: {str(e)}"
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=error_message))
-        except Exception as inner_e:
-            logger.error(f"無法發送錯誤訊息: {str(inner_e)}")
+            line_bot_api.reply_message(
+                event.reply_token, 
+                TextSendMessage(text=f"處理您的請求時發生錯誤，請稍後再試。")
+            )
+        except Exception as reply_error:
+            logger.error(f"發送錯誤訊息失敗: {str(reply_error)}")
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
-    """處理收到的 Postback 事件"""
+    """處理 LINE 平台的 Postback 事件"""
     try:
         user_id = event.source.user_id
-        postback_data = event.postback.data
-        logger.info(f"收到 Postback: {postback_data} 從用戶: {user_id}")
-        
-        # 防止重複處理同一個請求
-        # 使用 user_id + postback_data 作為唯一鍵
-        request_key = f"{user_id}:{postback_data}"
-        
-        # 檢查處理請求歷史（使用模組級別的字典）
-        if not hasattr(handle_postback, 'processed_requests'):
-            handle_postback.processed_requests = {}
-            
-        # 如果是短時間內的重複請求，則忽略
-        current_time = datetime.now()
-        if request_key in handle_postback.processed_requests:
-            last_process_time = handle_postback.processed_requests[request_key]
-            # 如果距離上次處理相同請求的時間不足3秒，視為重複請求
-            if (current_time - last_process_time).total_seconds() < 3:
-                logger.warning(f"檢測到重複請求: {request_key}，已忽略")
-                return
-        
-        # 記錄當前請求的處理時間
-        handle_postback.processed_requests[request_key] = current_time
-        
-        # 清理過期的請求記錄（保留最近10分鐘的記錄）
-        expired_time = current_time - timedelta(minutes=10)
-        handle_postback.processed_requests = {k: v for k, v in handle_postback.processed_requests.items() 
-                                             if v > expired_time}
+        data = event.postback.data
+        logger.info(f"收到 Postback: {data} 從用戶: {user_id}")
         
         # 解析 postback 數據
-        params = dict(urllib.parse.parse_qsl(postback_data))
-        action = params.get('action')
+        params = {}
+        for param in data.split('&'):
+            if '=' in param:
+                key, value = param.split('=', 1)
+                params[key] = value
         
-        # 檢查 note 參數是否需要 URL 解碼
-        if 'note' in params:
-            note = params.get('note')
-            try:
-                # 嘗試 URL 解碼
-                decoded_note = urllib.parse.unquote(note)
-                if decoded_note != note:
-                    logger.info(f"備註已解碼: '{note}' -> '{decoded_note}'")
-                    params['note'] = decoded_note
-            except Exception as e:
-                logger.error(f"備註解碼錯誤: {str(e)}")
+        action = params.get('action', '')
         
-        # 處理各種 action
-        response = None
-        
+        # 根據 action 處理不同的 postback
         if action == 'record':
-            # 記錄交易流程開始
-            transaction_type = params.get('type')
-            response = FlexMessageService.create_category_selection(user_id, transaction_type)
-        
-        elif action == 'category':
-            # 用戶選擇了類別
-            transaction_type = params.get('type')
-            category = params.get('category')
-            
-            # 保存用戶狀態
-            user_states[user_id] = {
-                'type': transaction_type,
-                'category': category,
-                'waiting_for': 'amount'  # 添加等待輸入金額的狀態標記
-            }
-            
-            # 轉到金額輸入
-            response = FlexMessageService.create_amount_input(transaction_type, category)
-        
-        elif action == 'amount':
-            # 用戶輸入完金額
-            transaction_type = params.get('type')
-            category = params.get('category')
-            amount = float(params.get('amount'))
-            
-            # 更新用戶狀態
-            user_states[user_id] = {
-                'type': transaction_type,
-                'category': category,
-                'amount': amount
-            }
-            
-            # 轉到帳戶選擇
-            response = FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
-        
-        elif action == 'account':
-            # 用戶選擇了帳戶
-            transaction_type = params.get('type')
-            category = params.get('category')
-            amount = float(params.get('amount'))
-            account = params.get('account')
-            note = params.get('note')  # 檢查是否已經有備註
-            
-            # 記錄所有參數，確保數據完整
-            logger.info(f"處理 account 動作: type={transaction_type}, category={category}, amount={amount}, account={account}, note={note}")
-            
-            # 如果已經有備註，直接記錄交易
-            if note:
-                # 添加交易記錄
-                is_expense = transaction_type == 'expense'
-                add_result = FinanceService.add_transaction(
-                    user_id=user_id,
-                    amount=amount,
-                    category_name=category,
-                    note=note,
-                    account_name=account,
-                    is_expense=is_expense
-                )
-                logger.info(f"使用預設備註的交易記錄結果: {add_result}")
-                
-                # 返回確認訊息
-                response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, note)
+            record_type = params.get('type', 'expense')
+            if record_type == 'expense':
+                response = "請輸入支出金額和分類，例如：「100 午餐」"
             else:
-                # 如果沒有備註，更新用戶狀態，詢問備註
-                user_states[user_id] = {
-                    'type': transaction_type,
-                    'category': category,
-                    'amount': amount,
-                    'account': account,
-                    'waiting_for': 'note'
-                }
-                
-                # 詢問備註
-                response = "請輸入備註（如不需要，請輸入「無」）："
-        
-        elif action == 'quick_expense':
-            # 用戶在快速支出界面選擇了類別
-            category = params.get('category')
-            amount = float(params.get('amount'))
-            note = params.get('note')  # 獲取備註，可能為None
-            
-            # 記錄完整操作參數
-            logger.info(f"用戶 {user_id} 執行快速支出：category={category}, amount=${amount}, note='{note}'")
-            
-            # 直接添加交易記錄
-            add_result = FinanceService.add_transaction(
-                user_id=user_id,
-                amount=amount,
-                category_name=category,
-                note=note,  # 使用備註，可能為None
-                account_name="默認",
-                is_expense=True
-            )
-            logger.info(f"快速支出交易記錄結果: {add_result}")
-            
-            # 返回確認訊息
-            response = FlexMessageService.create_confirmation("expense", category, amount, "默認", note)
-        
-        elif action == 'create_category':
-            # 用戶選擇創建新類別
-            name = params.get('name')
-            is_expense = params.get('is_expense') == 'true'
-            amount = params.get('amount')
-            
-            # 創建新類別
-            from models import db, Category
-            icon = "📝" if is_expense else "💴"
-            new_category = Category(
-                user_id=user_id,
-                name=name,
-                icon=icon,
-                is_expense=is_expense
-            )
-            db.session.add(new_category)
-            db.session.commit()
-            logger.info(f"為用戶 {user_id} 創建新類別: {name}")
-            
-            if amount:
-                # 如果是通過快速支出創建的類別，直接添加交易記錄
-                amount_float = float(amount)
-                add_result = FinanceService.add_transaction(
-                    user_id=user_id,
-                    amount=amount_float,
-                    category_name=name,
-                    note=None,
-                    account_name="默認",
-                    is_expense=is_expense
-                )
-                logger.info(f"交易記錄結果: {add_result}")
-                
-                # 返回確認訊息
-                response = FlexMessageService.create_confirmation("expense", name, amount_float, "默認", None)
-            else:
-                # 否則回到主選單
-                response = FlexMessageService.create_main_menu()
-        
-        elif action == 'custom_category':
-            # 用戶要創建自定義類別
-            transaction_type = params.get('type')
-            quick_expense = params.get('quick_expense') == 'true'
-            amount = params.get('amount')
-            
-            # 更新用戶狀態
-            state = {
-                'type': transaction_type,
-                'waiting_for': 'custom_category'
-            }
-            
-            if quick_expense and amount:
-                state['quick_expense'] = True
-                state['amount'] = float(amount)
-                
-            user_states[user_id] = state
-            
-            # 提示輸入類別名稱
-            response = "請輸入新的類別名稱："
-        
-        elif action == 'new_account':
-            # 用戶要創建新帳戶
-            transaction_type = params.get('type')
-            amount = params.get('amount')
-            category = params.get('category')
-            
-            # 更新用戶狀態
-            state = {
-                'type': transaction_type,
-                'waiting_for': 'new_account'
-            }
-            
-            if amount:
-                state['amount'] = float(amount)
-            
-            if category:
-                state['category'] = category
-                
-            user_states[user_id] = state
-            
-            # 提示輸入帳戶名稱
-            response = "請輸入新的帳戶名稱："
-        
-        elif action == 'skip_note':
-            # 用戶跳過輸入備註
-            transaction_type = params.get('type')
-            category = params.get('category')
-            amount = float(params.get('amount'))
-            account = params.get('account')
-            
-            # 添加交易記錄
-            is_expense = transaction_type == 'expense'
-            add_result = FinanceService.add_transaction(
-                user_id=user_id,
-                amount=amount,
-                category_name=category,
-                note=None,
-                account_name=account,
-                is_expense=is_expense
-            )
-            logger.info(f"交易記錄結果: {add_result}")
-            
-            # 返回確認訊息
-            response = FlexMessageService.create_confirmation(transaction_type, category, amount, account, None)
-        
-        elif action == 'cancel':
-            # 用戶取消操作
-            if user_id in user_states:
-                del user_states[user_id]
-            
-            response = "已取消當前操作。"
-        
-        elif action == 'task_menu':
-            # 顯示任務管理選單
-            response = FlexMessageService.create_task_menu(user_id)
-        
-        elif action == 'create_task':
-            # 創建新任務
-            response = "請輸入任務內容，格式為：「@任務內容 !提醒時間」，例如：「@買牛奶 !明天早上9點」"
-            # 設置用戶狀態
-            user_states[user_id] = {
-                'waiting_for': 'task_details'
-            }
-        
-        elif action == 'main_menu':
-            # 返回主選單
-            response = FlexMessageService.create_main_menu()
-        
-        # 交易記錄管理相關操作
+                response = "請輸入收入金額和分類，例如：「1000 薪資」"
         elif action == 'view_transactions':
-            # 查看交易記錄列表
             period = params.get('period', 'today')
-            transaction_list, summary = FinanceService.get_editable_transactions(user_id, period)
-            
-            if transaction_list:
-                response = FlexMessageService.create_editable_transaction_list(transaction_list, summary)
-            else:
-                response = summary  # 返回錯誤信息
-        
-        elif action == 'view_transaction':
-            # 查看單筆交易詳情
-            transaction_id = int(params.get('id'))
-            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
-            
-            if transaction_detail:
-                response = FlexMessageService.create_transaction_detail(transaction_detail)
-            else:
-                response = error
-        
-        elif action == 'edit_transaction':
-            # 修改交易記錄
-            transaction_id = int(params.get('id'))
-            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
-            
-            if not transaction_detail:
-                response = error
-            else:
-                # 獲取用戶的類別和帳戶列表
-                from models import Category, Account
-                is_expense = transaction_detail['is_expense']
-                
-                categories = Category.query.filter_by(
-                    user_id=user_id,
-                    is_expense=is_expense
-                ).all()
-                
-                accounts = Account.query.filter_by(user_id=user_id).all()
-                
-                response = FlexMessageService.create_edit_transaction_form(
-                    transaction_detail, categories, accounts
-                )
-        
-        elif action == 'update_category':
-            # 更新交易類別
-            transaction_id = int(params.get('id'))
-            category_id = int(params.get('category_id'))
-            
-            result = FinanceService.update_transaction(
-                user_id=user_id,
-                transaction_id=transaction_id,
-                category_id=category_id
-            )
-            
-            # 更新後重新獲取交易詳情
-            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
-            
-            if transaction_detail:
-                response = FlexMessageService.create_transaction_detail(transaction_detail)
-            else:
-                response = result
-        
-        elif action == 'update_account':
-            # 更新交易帳戶
-            transaction_id = int(params.get('id'))
-            account_id = int(params.get('account_id'))
-            
-            result = FinanceService.update_transaction(
-                user_id=user_id,
-                transaction_id=transaction_id,
-                account_id=account_id
-            )
-            
-            # 更新後重新獲取交易詳情
-            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
-            
-            if transaction_detail:
-                response = FlexMessageService.create_transaction_detail(transaction_detail)
-            else:
-                response = result
-        
-        elif action == 'edit_amount':
-            # 修改交易金額
-            transaction_id = int(params.get('id'))
-            
-            # 設置用戶狀態
-            user_states[user_id] = {
-                'waiting_for': 'edit_amount',
-                'transaction_id': transaction_id
-            }
-            
-            response = "請輸入新的交易金額："
-        
-        elif action == 'edit_note':
-            # 修改交易備註
-            transaction_id = int(params.get('id'))
-            
-            # 設置用戶狀態
-            user_states[user_id] = {
-                'waiting_for': 'edit_note',
-                'transaction_id': transaction_id
-            }
-            
-            response = "請輸入新的備註文字（輸入「無」清除備註）："
-        
-        elif action == 'confirm_delete':
-            # 確認刪除交易
-            transaction_id = int(params.get('id'))
-            transaction_detail, error = FinanceService.get_transaction_detail(user_id, transaction_id)
-            
-            if transaction_detail:
-                response = FlexMessageService.create_confirm_delete(
-                    transaction_id,
-                    transaction_detail['category'],
-                    transaction_detail['amount'],
-                    transaction_detail['date']
-                )
-            else:
-                response = error
-        
-        elif action == 'delete_transaction':
-            # 刪除交易記錄
-            transaction_id = int(params.get('id'))
-            result = FinanceService.delete_transaction(user_id, transaction_id)
-            
-            # 顯示結果消息之後返回交易列表
-            response = f"{result}\n查詢更多交易請發送「記錄」"
-        
+            response = FinanceService.get_transactions(user_id, period)
+        elif action == 'task_menu':
+            response = TaskService.show_task_menu(user_id)
         else:
-            response = "未知的操作。"
+            response = f"未知的操作: {action}"
         
-        # 發送回覆
-        if response:
-            logger.info(f"準備回覆用戶 {user_id}")
-            if isinstance(response, FlexSendMessage):
-                line_bot_api.reply_message(event.reply_token, response)
-                logger.info(f"已發送 Flex 訊息回應給用戶 {user_id}")
-            else:
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
-                logger.info(f"已發送文字訊息回應給用戶 {user_id}: {response[:30]}...")
+        # 發送回應
+        if isinstance(response, FlexSendMessage):
+            line_bot_api.reply_message(event.reply_token, response)
         else:
-            logger.warning(f"沒有對用戶 {user_id} 的回應")
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
     
     except Exception as e:
-        logger.error(f"處理 Postback 時發生錯誤: {str(e)}", exc_info=True)
+        logger.error(f"處理 Postback 時發生錯誤: {str(e)}")
+        logger.error(traceback.format_exc())
         try:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="處理您的請求時發生錯誤，請稍後再試。"))
-        except:
-            logger.error("無法發送錯誤訊息")
+            line_bot_api.reply_message(
+                event.reply_token, 
+                TextSendMessage(text="處理您的請求時發生錯誤，請稍後再試。")
+            )
+        except Exception as reply_error:
+            logger.error(f"發送錯誤訊息失敗: {str(reply_error)}")
 
 def create_app(test_config=None):
     """創建 Flask 應用"""
