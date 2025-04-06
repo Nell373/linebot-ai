@@ -60,6 +60,18 @@ def process_message(event):
             elif state.get('waiting_for') == 'new_account':
                 # 用戶正在輸入新帳戶名稱
                 return handle_new_account(user_id, message_text, state)
+            elif state.get('waiting_for') == 'keypad_input':
+                # 用戶已在使用數字鍵盤，直接將輸入作為完整金額
+                try:
+                    amount = int(message_text)
+                    transaction_type = state.get('type')
+                    category = state.get('category')
+                    # 清除用戶狀態
+                    del user_states[user_id]
+                    # 繼續到帳戶選擇
+                    return FlexMessageService.create_account_selection(user_id, transaction_type, category, amount)
+                except ValueError:
+                    return "請輸入有效的數字金額。"
         
         # 處理特殊命令
         if message_text.lower() == 'flex':
@@ -389,6 +401,7 @@ def handle_postback(event):
         transaction_type = parsed_data.get('type')
         category = parsed_data.get('category')
         
+        # 獲取當前金額（如果有）
         current_amount = user_states.get(user_id, {}).get('current_amount', '')
         
         if key == 'backspace':
@@ -400,22 +413,108 @@ def handle_postback(event):
             current_amount += key
         
         # 更新用戶狀態
+        user_states[user_id] = {
+            'waiting_for': 'keypad_input',
+            'type': transaction_type,
+            'category': category,
+            'current_amount': current_amount
+        }
+        
+        # 創建一個顯示當前金額的 Flex 訊息
         if not current_amount:
             # 如果金額為空，返回數字鍵盤
-            user_states[user_id] = {
-                'current_amount': '',
-                'type': transaction_type,
-                'category': category
-            }
             response = FlexMessageService.create_amount_input(transaction_type, category)
         else:
-            # 顯示當前輸入的金額
-            user_states[user_id] = {
-                'current_amount': current_amount,
-                'type': transaction_type,
-                'category': category
-            }
-            response = TextSendMessage(text=f"當前金額: ${current_amount}\n請繼續輸入或發送完整金額以繼續")
+            # 自定義金額顯示訊息
+            is_expense = transaction_type == "expense"
+            type_text = "支出" if is_expense else "收入"
+            type_color = "#FF6B6E" if is_expense else "#27ACB2"
+            
+            bubble = BubbleContainer(
+                header=BoxComponent(
+                    layout="vertical",
+                    backgroundColor=type_color,
+                    paddingAll="10px",
+                    contents=[
+                        TextComponent(
+                            text=f"{type_text}金額",
+                            color="#FFFFFF",
+                            weight="bold",
+                            size="lg",
+                            align="center"
+                        ),
+                        TextComponent(
+                            text=f"類別：{category}",
+                            color="#FFFFFF",
+                            size="sm",
+                            align="center",
+                            margin="xs"
+                        )
+                    ]
+                ),
+                body=BoxComponent(
+                    layout="vertical",
+                    contents=[
+                        TextComponent(
+                            text=f"目前輸入: ${current_amount}",
+                            size="xl",
+                            weight="bold",
+                            align="center",
+                            margin="md",
+                            color=type_color
+                        ),
+                        TextComponent(
+                            text="繼續輸入，或直接發送數字以確認金額",
+                            size="sm",
+                            color="#888888",
+                            align="center",
+                            margin="sm"
+                        ),
+                        BoxComponent(
+                            layout="horizontal",
+                            margin="xl",
+                            contents=[
+                                ButtonComponent(
+                                    style="primary",
+                                    color=type_color,
+                                    action=PostbackAction(
+                                        label="確認金額",
+                                        display_text=f"金額：{current_amount}",
+                                        data=f"action=amount&type={transaction_type}&category={category}&amount={current_amount}"
+                                    ),
+                                    height="sm"
+                                ),
+                                ButtonComponent(
+                                    style="secondary",
+                                    action=PostbackAction(
+                                        label="重新輸入",
+                                        display_text="重新輸入金額",
+                                        data=f"action=back_to_amount&type={transaction_type}&category={category}"
+                                    ),
+                                    height="sm",
+                                    margin="md"
+                                )
+                            ]
+                        )
+                    ]
+                ),
+                footer=BoxComponent(
+                    layout="vertical",
+                    contents=[
+                        ButtonComponent(
+                            style="secondary",
+                            action=PostbackAction(
+                                label="返回類別選擇",
+                                display_text="返回類別選擇",
+                                data=f"action=back_to_category&type={transaction_type}"
+                            ),
+                            height="sm"
+                        )
+                    ]
+                )
+            )
+            
+            response = FlexSendMessage(alt_text="輸入金額", contents=bubble)
     
     elif action == 'amount':
         # 選擇了金額，顯示帳戶選擇
