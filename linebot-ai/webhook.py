@@ -40,18 +40,12 @@ line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
 
 @app.route("/", methods=['GET'])
-def home():
-    logger.info("Home route accessed")
-    return Response('LINE Bot is running!', status=200)
-
-@app.route("/api/webhook", methods=['GET'])
-def webhook_get():
-    logger.info("Webhook GET route accessed")
-    return Response('Webhook endpoint is active', status=200)
-
-@app.route("/api/webhook", methods=['POST'])
-def webhook_post():
-    logger.info("Webhook POST route accessed")
+@app.route("/api/webhook", methods=['GET', 'POST'])
+def webhook():
+    logger.info(f"Route accessed: {request.path} with method: {request.method}")
+    
+    if request.method == 'GET':
+        return Response('LINE Bot is running!', status=200)
     
     # 獲取 X-Line-Signature 標頭值
     signature = request.headers.get('X-Line-Signature', '')
