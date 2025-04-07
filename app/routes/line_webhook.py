@@ -99,6 +99,12 @@ def handle_text_message_wrapper(event):
             )
             return
         
+        # 主選單指令 (kimi)
+        if text.lower() == "kimi":
+            logger.info('處理主選單指令')
+            show_menu(event)
+            return
+        
         # 查找或創建用戶
         user = User.find_by_line_id(user_id)
         if not user:
@@ -877,62 +883,94 @@ def show_menu(event):
         "header": {
             "type": "box",
             "layout": "vertical",
+            "backgroundColor": "#FFC940",
+            "paddingAll": "10px",
             "contents": [
                 {
                     "type": "text",
-                    "text": "Kimi 助手",
+                    "text": "Kimi 助手主選單",
+                    "color": "#FFFFFF",
                     "weight": "bold",
-                    "size": "xl",
-                    "color": "#1DB446"
+                    "size": "lg",
+                    "align": "center"
                 }
             ]
         },
         "body": {
             "type": "box",
             "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "您需要什麼幫助？",
-                    "size": "md",
-                    "wrap": True
-                }
-            ]
-        },
-        "footer": {
-            "type": "box",
-            "layout": "vertical",
+            "backgroundColor": "#FFFBE6",
+            "paddingAll": "15px",
             "contents": [
                 {
                     "type": "button",
-                    "action": {
-                        "type": "postback",
-                        "label": "任務管理",
-                        "data": "action=task_menu",
-                        "displayText": "查看任務選單"
-                    },
                     "style": "primary",
-                    "margin": "sm"
+                    "color": "#FFC940",
+                    "action": {
+                        "type": "message",
+                        "label": "任務管理",
+                        "text": "任務管理"
+                    },
+                    "height": "sm",
+                    "margin": "md"
                 },
                 {
                     "type": "button",
+                    "style": "primary",
+                    "color": "#FAAD14",
                     "action": {
-                        "type": "postback",
-                        "label": "財務管理",
-                        "data": "action=finance_menu",
-                        "displayText": "查看財務選單"
+                        "type": "message",
+                        "label": "記錄支出",
+                        "text": "記錄支出"
                     },
+                    "height": "sm",
+                    "margin": "md"
+                },
+                {
+                    "type": "button",
+                    "style": "primary", 
+                    "color": "#FFE58F",
+                    "action": {
+                        "type": "message",
+                        "label": "記錄收入",
+                        "text": "記錄收入"
+                    },
+                    "height": "sm",
+                    "margin": "md"
+                },
+                {
+                    "type": "button",
                     "style": "secondary",
-                    "margin": "sm"
+                    "action": {
+                        "type": "message",
+                        "label": "查看今日記錄",
+                        "text": "今日收支"
+                    },
+                    "height": "sm",
+                    "margin": "md"
                 },
                 {
                     "type": "button",
+                    "style": "secondary",
                     "action": {
-                        "type": "uri",
-                        "label": "開啟網頁版",
-                        "uri": f"https://liff.line.me/{current_app.config.get('LIFF_ID')}"
+                        "type": "message",
+                        "label": "查看本月記錄",
+                        "text": "本月收支"
                     },
-                    "margin": "sm"
+                    "height": "sm",
+                    "margin": "md"
+                },
+                {
+                    "type": "button",
+                    "style": "link",
+                    "color": "#8C8C8C",
+                    "action": {
+                        "type": "message",
+                        "label": "幫助",
+                        "text": "kimi help"
+                    },
+                    "height": "sm",
+                    "margin": "md"
                 }
             ]
         }
@@ -940,5 +978,5 @@ def show_menu(event):
     
     line_bot_api.reply_message(
         event.reply_token,
-        FlexSendMessage(alt_text="功能選單", contents=menu_template)
+        FlexSendMessage(alt_text="Kimi 助手主選單", contents=menu_template)
     )
