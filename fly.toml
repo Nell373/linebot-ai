@@ -36,7 +36,7 @@ primary_region = "nrt" # 東京區域，對亞洲用戶較快
     soft_limit = 20
 
 [processes]
-  app = "gunicorn 'app:app' --bind=0.0.0.0:8080"
+  app = "gunicorn 'wsgi:app' --bind=0.0.0.0:8080"
 
 [mounts]
   source = "linebot_data"
