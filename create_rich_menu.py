@@ -51,8 +51,8 @@ line_bot_api = MessagingApi(api_client)
 def create_rich_menu():
     """創建 Rich Menu"""
     
-    # 網站 URL (改用部署的網站而非LIFF)
-    app_url = "https://linebot-ai.fly.dev"
+    # LIFF URL
+    liff_url = f"https://liff.line.me/{LIFF_ID}"
     
     # Rich Menu 資料結構
     rich_menu_data = {
@@ -72,8 +72,8 @@ def create_rich_menu():
                     "height": 843
                 },
                 "action": {
-                    "type": "message",
-                    "text": "任務管理",
+                    "type": "uri",
+                    "uri": f"{liff_url}?type=task",
                     "label": "任務管理"
                 }
             },
@@ -85,8 +85,8 @@ def create_rich_menu():
                     "height": 843
                 },
                 "action": {
-                    "type": "message",
-                    "text": "財務管理",
+                    "type": "uri",
+                    "uri": f"{liff_url}?type=finance",
                     "label": "財務管理"
                 }
             },
@@ -124,8 +124,8 @@ def create_rich_menu():
                     "height": 843
                 },
                 "action": {
-                    "type": "message",
-                    "text": "設定",
+                    "type": "uri",
+                    "uri": f"{liff_url}?type=settings",
                     "label": "設定"
                 }
             }

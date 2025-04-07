@@ -907,9 +907,9 @@ def show_menu(event):
                     "style": "primary",
                     "color": "#FFC940",
                     "action": {
-                        "type": "message",
+                        "type": "uri",
                         "label": "任務管理",
-                        "text": "任務管理"
+                        "uri": f"https://liff.line.me/{current_app.config.get('LIFF_ID')}?type=task"
                     },
                     "height": "sm",
                     "margin": "md"
@@ -965,9 +965,9 @@ def show_menu(event):
                     "style": "link",
                     "color": "#8C8C8C",
                     "action": {
-                        "type": "message",
-                        "label": "幫助",
-                        "text": "kimi help"
+                        "type": "uri",
+                        "label": "開啟網頁版",
+                        "uri": f"https://liff.line.me/{current_app.config.get('LIFF_ID')}"
                     },
                     "height": "sm",
                     "margin": "md"
