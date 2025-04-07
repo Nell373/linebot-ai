@@ -16,13 +16,21 @@ import logging
 import os
 from datetime import datetime, timedelta
 from linebot.models import (
-    FlexSendMessage, BubbleContainer, BoxComponent,
-    TextComponent, ButtonComponent, IconComponent,
-    PostbackAction, MessageAction, SeparatorComponent,
-    CarouselContainer, QuickReply, QuickReplyButton,
+    FlexSendMessage,
+    BubbleContainer,
+    BoxComponent,
+    TextComponent,
+    ButtonComponent,
+    IconComponent,
+    SeparatorComponent,
+    CarouselContainer,
+    QuickReply,
+    QuickReplyButton,
+    PostbackAction,
+    MessageAction,
     URIAction
 )
-from models import Category, Account
+from app.models import Category, User, Account, db
 import urllib.parse
 
 logger = logging.getLogger(__name__)
@@ -37,245 +45,175 @@ logger.info(f"使用 LIFF URL: {LIFF_URL}")
 logger.info(f"LIFF Channel Secret 設定狀態: {'已設定' if LIFF_CHANNEL_SECRET else '未設定'}")
 
 class FlexMessageService:
-    @staticmethod
-    def create_main_menu():
-        """創建主選單 (功能選擇)"""
-        try:
-            logger.info("開始創建主選單")
-            bubble = BubbleContainer(
-                body=BoxComponent(
-                    layout="vertical",
-                    backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                    contents=[
-                        TextComponent(
-                            text="Kimi 助手",
-                            weight="bold",
-                            size="xl",
-                            align="center",
-                            color="#595959"  # 主文字色
-                        ),
-                        TextComponent(
-                            text="請選擇功能",
-                            size="md",
-                            color="#8C8C8C",  # 次要文字色
-                            align="center",
-                            margin="md"
-                        ),
-                        SeparatorComponent(margin="xl", color="#D9D9D9"),  # 邊框用灰
-                        BoxComponent(
-                            layout="horizontal",
-                            margin="md",
-                            contents=[
-                                ButtonComponent(
-                                    style="primary",
-                                    color="#FFC940",  # 主色 Primary
-                                    action=PostbackAction(
-                                        label="記帳",
-                                        display_text="記帳",
-                                        data="action=record&type=expense"
-                                    ),
-                                    height="sm",
-                                    flex=1
-                                ),
-                                ButtonComponent(
-                                    style="primary",
-                                    color="#FAAD14",  # 強調亮點黃
-                                    action=PostbackAction(
-                                        label="任務",
-                                        display_text="任務管理",
-                                        data="action=task_menu"
-                                    ),
-                                    height="sm",
-                                    margin="md",
-                                    flex=1
-                                )
-                            ]
-                        ),
-                        BoxComponent(
-                            layout="horizontal",
-                            margin="md",
-                            contents=[
-                                ButtonComponent(
-                                    style="secondary",
-                                    color="#FFC940",  # 主色 Primary
-                                    action=PostbackAction(
-                                        label="記錄查詢",
-                                        display_text="查詢記錄",
-                                        data="action=view_transactions&period=today"
-                                    ),
-                                    height="sm",
-                                    flex=1
-                                ),
-                                ButtonComponent(
-                                    style="secondary",
-                                    color="#FAAD14",  # 強調亮點黃
-                                    action=MessageAction(
-                                        label="月度報表",
-                                        text="月報"
-                                    ),
-                                    height="sm",
-                                    margin="md",
-                                    flex=1
-                                )
-                            ]
-                        )
-                    ]
-                )
-            )
-            
-            logger.info("成功建立 Bubble 主選單")
-            flex_message = FlexSendMessage(
-                alt_text="Kimi 助手選單",
-                contents=bubble,
-                quick_reply=QuickReply(items=[
-                    QuickReplyButton(
-                        action=MessageAction(label="最近記錄", text="今天")
-                    ),
-                    QuickReplyButton(
-                        action=MessageAction(label="月度報表", text="月報")
-                    ),
-                    QuickReplyButton(
-                        action=MessageAction(label="編輯記錄", text="記錄")
-                    )
-                ])
-            )
-            logger.info("主選單 FlexSendMessage 創建完成")
-            return flex_message
-        except Exception as e:
-            logger.error(f"創建主選單時發生錯誤: {str(e)}")
-            raise
+    """Flex Message 服務類"""
+    
+    def __init__(self):
+        """初始化 Flex Message 服務"""
+        self.liff_id = os.environ.get('LIFF_ID', '')
+        self.liff_url = f"https://liff.line.me/{self.liff_id}" if self.liff_id else ""
+        self.liff_channel_secret = os.environ.get('LIFF_CHANNEL_SECRET', '')
+        
+        logger.info(f"使用 LIFF URL: {self.liff_url}")
+        logger.info(f"LIFF Channel Secret 設定狀態: {'已設定' if self.liff_channel_secret else '未設定'}")
+
+    def create_main_menu(self):
+        """創建主選單"""
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "主選單",
+                        "weight": "bold",
+                        "size": "xl"
+                    }
+                ]
+            }
+        }
+        return FlexSendMessage(alt_text="主選單", contents=bubble)
+
+    def create_task_menu(self):
+        """創建任務管理選單"""
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "任務管理",
+                        "weight": "bold",
+                        "size": "xl",
+                        "color": "#555555"
+                    },
+                    {
+                        "type": "text",
+                        "text": "請選擇操作",
+                        "color": "#888888",
+                        "size": "md",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "lg",
+                        "spacing": "sm",
+                        "contents": [
+                            {
+                                "type": "button",
+                                "style": "primary",
+                                "color": "#FAAD14",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "新增任務",
+                                    "uri": f"{self.liff_url}?action=create_task"
+                                }
+                            },
+                            {
+                                "type": "button",
+                                "style": "secondary",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "查看任務",
+                                    "uri": f"{self.liff_url}?action=view_tasks"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+        
+        return FlexSendMessage(alt_text="任務管理選單", contents=bubble)
 
     @staticmethod
     def create_category_selection(user_id, transaction_type):
         """創建類別選擇選單"""
-        is_expense = transaction_type == "expense"
+        categories = []
         
-        # 獲取用戶可用的類別
-        categories = Category.query.filter_by(
-            user_id=user_id,
-            is_expense=is_expense
-        ).all()
+        # 支出與收入類別 (簡易版)
+        if transaction_type == "expense":
+            categories = [
+                {"name": "餐飲", "color": "#FF9800"},
+                {"name": "交通", "color": "#03A9F4"},
+                {"name": "購物", "color": "#E91E63"},
+                {"name": "娛樂", "color": "#9C27B0"},
+                {"name": "居家", "color": "#8BC34A"},
+                {"name": "其它", "color": "#607D8B"}
+            ]
+        else:  # income
+            categories = [
+                {"name": "薪資", "color": "#4CAF50"},
+                {"name": "獎金", "color": "#FFC107"},
+                {"name": "理財", "color": "#3F51B5"},
+                {"name": "其它", "color": "#607D8B"}
+            ]
         
-        # 如果沒有類別，使用預設類別
-        if not categories:
-            if is_expense:
-                categories = [
-                    Category(name="餐飲", icon="🍔", is_expense=True),
-                    Category(name="交通", icon="🚗", is_expense=True),
-                    Category(name="購物", icon="🛒", is_expense=True),
-                    Category(name="娛樂", icon="🎮", is_expense=True),
-                    Category(name="住房", icon="🏠", is_expense=True),
-                    Category(name="醫療", icon="💊", is_expense=True),
-                    Category(name="教育", icon="📚", is_expense=True),
-                    Category(name="其他", icon="📝", is_expense=True)
+        # 建立類別按鈕
+        category_buttons = []
+        for i, category in enumerate(categories):
+            button = {
+                "type": "button",
+                "style": "primary",
+                "color": category["color"],
+                "action": {
+                    "type": "message",
+                    "label": category["name"],
+                    "text": category["name"]
+                },
+                "height": "sm",
+                "margin": "sm" if i > 0 else "none"
+            }
+            category_buttons.append(button)
+        
+        # 添加自定義類別按鈕
+        category_buttons.append({
+            "type": "button",
+            "style": "secondary",
+            "action": {
+                "type": "message",
+                "label": "自定義類別",
+                "text": "自定義類別"
+            },
+            "height": "sm",
+            "margin": "md"
+        })
+        
+        # 創建 Flex 消息
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "選擇類別",
+                        "weight": "bold",
+                        "size": "xl"
+                    },
+                    {
+                        "type": "text",
+                        "text": "支出" if transaction_type == "expense" else "收入",
+                        "color": "#888888",
+                        "size": "md",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "lg",
+                        "contents": category_buttons
+                    }
                 ]
-            else:
-                categories = [
-                    Category(name="薪資", icon="💰", is_expense=False),
-                    Category(name="獎金", icon="🎁", is_expense=False),
-                    Category(name="投資", icon="📈", is_expense=False),
-                    Category(name="其他收入", icon="💴", is_expense=False)
-                ]
+            }
+        }
         
-        # 分組顯示類別 (每行3個)
-        grouped_categories = []
-        for i in range(0, len(categories), 3):
-            group = categories[i:i+3]
-            row = BoxComponent(
-                layout="horizontal",
-                margin="md",
-                contents=[]
-            )
-            
-            for category in group:
-                row.contents.append(
-                    BoxComponent(
-                        layout="vertical",
-                        action=PostbackAction(
-                            label=category.name,
-                            display_text=f"選擇類別：{category.name}",
-                            data=f"action=category&type={transaction_type}&category={category.name}"
-                        ),
-                        contents=[
-                            TextComponent(
-                                text=category.icon,
-                                size="xxl",
-                                align="center"
-                            ),
-                            TextComponent(
-                                text=category.name,
-                                size="sm",
-                                align="center",
-                                wrap=True
-                            )
-                        ],
-                        width="33%",
-                        cornerRadius="md",
-                        paddingAll="8px",
-                        backgroundColor="#FFFBE6"  # 淡黃背景區塊
-                    )
-                )
-            
-            grouped_categories.append(row)
-        
-        # 創建Flex Message
-        type_text = "支出" if is_expense else "收入"
-        type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
-        
-        bubble = BubbleContainer(
-            header=BoxComponent(
-                layout="vertical",
-                backgroundColor=type_color,
-                paddingAll="10px",
-                contents=[
-                    TextComponent(
-                        text=f"選擇{type_text}類別",
-                        color="#FFFFFF",
-                        weight="bold",
-                        size="lg",
-                        align="center"
-                    )
-                ]
-            ),
-            body=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=grouped_categories + [
-                    ButtonComponent(
-                        style="link",
-                        color="#8C8C8C",  # 次要文字色
-                        action=PostbackAction(
-                            label="自定義類別",
-                            display_text="創建自定義類別",
-                            data=f"action=custom_category&type={transaction_type}"
-                        ),
-                        height="sm",
-                        margin="lg"
-                    )
-                ]
-            ),
-            footer=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=[
-                    ButtonComponent(
-                        style="secondary",
-                        color="#8C8C8C",  # 次要文字色
-                        action=PostbackAction(
-                            label="返回",
-                            display_text="返回主選單",
-                            data="action=main_menu"
-                        ),
-                        height="sm"
-                    )
-                ]
-            )
-        )
-        
-        return FlexSendMessage(
-            alt_text=f"選擇{type_text}類別",
-            contents=bubble
-        )
+        return FlexSendMessage(alt_text="選擇類別", contents=bubble)
 
     @staticmethod
     def create_amount_input(transaction_type, category):
@@ -284,90 +222,100 @@ class FlexMessageService:
         type_text = "支出" if is_expense else "收入"
         type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
-        bubble = BubbleContainer(
-            header=BoxComponent(
-                layout="vertical",
-                backgroundColor=type_color,
-                paddingAll="10px",
-                contents=[
-                    TextComponent(
-                        text=f"{type_text}金額",
-                        color="#FFFFFF",
-                        weight="bold",
-                        size="lg",
-                        align="center"
-                    ),
-                    TextComponent(
-                        text=f"類別：{category}",
-                        color="#FFFFFF",
-                        size="sm",
-                        align="center",
-                        margin="xs"
-                    )
+        bubble = {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": type_color,
+                "paddingAll": "10px",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"{type_text}金額",
+                        "color": "#FFFFFF",
+                        "weight": "bold",
+                        "size": "lg",
+                        "align": "center"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"類別：{category}",
+                        "color": "#FFFFFF",
+                        "size": "sm",
+                        "align": "center",
+                        "margin": "xs"
+                    }
                 ]
-            ),
-            body=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=[
-                    TextComponent(
-                        text="請直接輸入金額數字",
-                        size="md",
-                        color="#8C8C8C",  # 次要文字色
-                        align="center",
-                        margin="md"
-                    ),
-                    TextComponent(
-                        text="例如：150、1000、33000",
-                        size="sm",
-                        color="#8C8C8C",  # 次要文字色
-                        align="center",
-                        margin="sm"
-                    ),
-                    TextComponent(
-                        text="或使用快速格式：早餐-50、薪資+5000",
-                        size="sm",
-                        color="#8C8C8C",  # 次要文字色
-                        align="center",
-                        margin="sm"
-                    ),
-                    BoxComponent(
-                        layout="vertical",
-                        margin="xxl",
-                        contents=[
-                            TextComponent(
-                                text="請在下方輸入框中直接輸入金額",
-                                size="md", 
-                                weight="bold",
-                                align="center",
-                                color="#595959"  # 主文字色
-                            )
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFFBE6",  # 淡黃背景區塊
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "請直接輸入金額數字",
+                        "size": "md",
+                        "color": "#8C8C8C",  # 次要文字色
+                        "align": "center",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": "例如：150、1000、33000",
+                        "size": "sm",
+                        "color": "#8C8C8C",  # 次要文字色
+                        "align": "center",
+                        "margin": "sm"
+                    },
+                    {
+                        "type": "text",
+                        "text": "或使用快速格式：早餐-50、薪資+5000",
+                        "size": "sm",
+                        "color": "#8C8C8C",  # 次要文字色
+                        "align": "center",
+                        "margin": "sm"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "xxl",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "請在下方輸入框中直接輸入金額",
+                                "size": "md", 
+                                "weight": "bold",
+                                "align": "center",
+                                "color": "#595959"  # 主文字色
+                            }
                         ]
-                    )
+                    }
                 ]
-            ),
-            footer=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=[
-                    ButtonComponent(
-                        style="secondary",
-                        color="#8C8C8C",  # 次要文字色
-                        action=PostbackAction(
-                            label="返回",
-                            display_text="返回類別選擇",
-                            data=f"action=back_to_category&type={transaction_type}"
-                        ),
-                        height="sm"
-                    )
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFFBE6",  # 淡黃背景區塊
+                "contents": [
+                    {
+                        "type": "button",
+                        "style": "secondary",
+                        "color": "#8C8C8C",  # 次要文字色
+                        "action": {
+                            "type": "postback",
+                            "label": "返回",
+                            "displayText": "返回類別選擇",
+                            "data": f"action=back_to_category&type={transaction_type}"
+                        },
+                        "height": "sm"
+                    }
                 ]
-            )
-        )
+            }
+        }
         
-        return FlexSendMessage(
-            alt_text=f"輸入{type_text}金額",
-            contents=bubble
-        )
+        return FlexSendMessage(alt_text=f"輸入{type_text}金額", contents=bubble)
 
     @staticmethod
     def create_account_selection(user_id, transaction_type, category, amount, note=None):
@@ -501,111 +449,125 @@ class FlexMessageService:
             quick_notes = ["薪資", "額外收入", "獎金", "紅利", "投資收益", "退款"]
         
         # 創建快速備註按鈕
-        quick_note_rows = []
+        quick_note_buttons = []
         for i in range(0, len(quick_notes), 3):
             group = quick_notes[i:min(i+3, len(quick_notes))]
-            row = BoxComponent(
-                layout="horizontal",
-                margin="md",
-                contents=[]
-            )
+            row = {
+                "type": "box",
+                "layout": "horizontal",
+                "margin": "md",
+                "contents": []
+            }
             
             for note in group:
-                row.contents.append(
-                    ButtonComponent(
-                        style="secondary",
-                        action=PostbackAction(
-                            label=note,
-                            display_text=f"備註：{note}",
-                            data=f"action=finish&type={transaction_type}&category={category}&amount={amount}&account={account}&note={note}"
-                        ),
-                        height="sm",
-                        flex=1,
-                        margin="xs"
-                    )
-                )
+                row["contents"].append({
+                    "type": "button",
+                    "style": "secondary",
+                    "action": {
+                        "type": "postback",
+                        "label": note,
+                        "displayText": f"備註：{note}",
+                        "data": f"action=finish&type={transaction_type}&category={category}&amount={amount}&account={account}&note={note}"
+                    },
+                    "height": "sm",
+                    "flex": 1,
+                    "margin": "xs"
+                })
             
-            quick_note_rows.append(row)
+            quick_note_buttons.append(row)
         
-        bubble = BubbleContainer(
-            header=BoxComponent(
-                layout="vertical",
-                backgroundColor=type_color,
-                paddingAll="10px",
-                contents=[
-                    TextComponent(
-                        text="添加備註 (選填)",
-                        color="#FFFFFF",
-                        weight="bold",
-                        size="lg",
-                        align="center"
-                    ),
-                    TextComponent(
-                        text=f"{type_text} {category} ${amount} - {account}",
-                        color="#FFFFFF",
-                        size="sm",
-                        align="center",
-                        wrap=True,
-                        margin="xs"
-                    )
+        bubble = {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": type_color,
+                "paddingAll": "10px",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "添加備註 (選填)",
+                        "color": "#FFFFFF",
+                        "weight": "bold",
+                        "size": "lg",
+                        "align": "center"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"{type_text} {category} ${amount} - {account}",
+                        "color": "#FFFFFF",
+                        "size": "sm",
+                        "align": "center",
+                        "wrap": True,
+                        "margin": "xs"
+                    }
                 ]
-            ),
-            body=BoxComponent(
-                layout="vertical",
-                contents=[
-                    TextComponent(
-                        text="您可以直接輸入備註文字，或選擇下方選項",
-                        size="sm",
-                        color="#8C8C8C",  # 次要文字色
-                        align="center",
-                        margin="md"
-                    ),
-                    TextComponent(
-                        text="快速備註",
-                        size="md",
-                        weight="bold",
-                        margin="lg"
-                    )
-                ] + quick_note_rows
-            ),
-            footer=BoxComponent(
-                layout="vertical",
-                contents=[
-                    BoxComponent(
-                        layout="horizontal",
-                        contents=[
-                            ButtonComponent(
-                                style="secondary",
-                                action=PostbackAction(
-                                    label="返回",
-                                    display_text="返回帳戶選擇",
-                                    data=f"action=back_to_account&type={transaction_type}&category={category}&amount={amount}"
-                                ),
-                                height="sm",
-                                flex=1
-                            ),
-                            ButtonComponent(
-                                style="primary",
-                                color=type_color,
-                                action=PostbackAction(
-                                    label="跳過備註",
-                                    display_text="完成記帳",
-                                    data=f"action=finish&type={transaction_type}&category={category}&amount={amount}&account={account}"
-                                ),
-                                height="sm",
-                                flex=2,
-                                margin="md"
-                            )
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "您可以直接輸入備註文字，或選擇下方選項",
+                        "size": "sm",
+                        "color": "#8C8C8C",  # 次要文字色
+                        "align": "center",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": "快速備註",
+                        "size": "md",
+                        "weight": "bold",
+                        "margin": "lg"
+                    }
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "button",
+                                "style": "secondary",
+                                "action": {
+                                    "type": "postback",
+                                    "label": "返回",
+                                    "displayText": "返回帳戶選擇",
+                                    "data": f"action=back_to_account&type={transaction_type}&category={category}&amount={amount}"
+                                },
+                                "height": "sm",
+                                "flex": 1
+                            },
+                            {
+                                "type": "button",
+                                "style": "primary",
+                                "color": type_color,
+                                "action": {
+                                    "type": "postback",
+                                    "label": "跳過備註",
+                                    "displayText": "完成記帳",
+                                    "data": f"action=finish&type={transaction_type}&category={category}&amount={amount}&account={account}"
+                                },
+                                "height": "sm",
+                                "flex": 2,
+                                "margin": "md"
+                            }
                         ]
-                    )
+                    }
                 ]
-            )
-        )
+            }
+        }
         
-        return FlexSendMessage(
-            alt_text="添加備註",
-            contents=bubble
-        )
+        # 將快速備註按鈕添加到body的contents中
+        bubble["body"]["contents"].extend(quick_note_buttons)
+        
+        return FlexSendMessage(alt_text="添加備註", contents=bubble)
 
     @staticmethod
     def create_confirmation(transaction_type, category, amount, account, note=None):
@@ -615,133 +577,215 @@ class FlexMessageService:
         type_color = "#FAAD14" if is_expense else "#FFC940"  # 強調亮點黃/主色 Primary
         
         contents = [
-            BoxComponent(
-                layout="horizontal",
-                contents=[
-                    TextComponent(text="類型", size="md", color="#8C8C8C", flex=2),
-                    TextComponent(text=type_text, size="md", weight="bold", color="#595959", flex=4)
+            {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "類型",
+                        "size": "md",
+                        "color": "#8C8C8C", 
+                        "flex": 2
+                    },
+                    {
+                        "type": "text",
+                        "text": type_text,
+                        "size": "md",
+                        "weight": "bold",
+                        "color": "#595959",
+                        "flex": 4
+                    }
                 ],
-                margin="md"
-            ),
-            BoxComponent(
-                layout="horizontal",
-                contents=[
-                    TextComponent(text="類別", size="md", color="#8C8C8C", flex=2),
-                    TextComponent(text=category, size="md", weight="bold", color="#595959", flex=4)
+                "margin": "md"
+            },
+            {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "類別",
+                        "size": "md",
+                        "color": "#8C8C8C",
+                        "flex": 2
+                    },
+                    {
+                        "type": "text",
+                        "text": category,
+                        "size": "md",
+                        "weight": "bold",
+                        "color": "#595959",
+                        "flex": 4
+                    }
                 ],
-                margin="md"
-            ),
-            BoxComponent(
-                layout="horizontal",
-                contents=[
-                    TextComponent(text="金額", size="md", color="#8C8C8C", flex=2),
-                    TextComponent(
-                        text=f"${amount}",
-                        size="md",
-                        weight="bold",
-                        color=type_color,
-                        flex=4
-                    )
+                "margin": "md"
+            },
+            {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "金額",
+                        "size": "md",
+                        "color": "#8C8C8C",
+                        "flex": 2
+                    },
+                    {
+                        "type": "text",
+                        "text": f"${amount}",
+                        "size": "md",
+                        "weight": "bold",
+                        "color": type_color,
+                        "flex": 4
+                    }
                 ],
-                margin="md"
-            ),
-            BoxComponent(
-                layout="horizontal",
-                contents=[
-                    TextComponent(text="帳戶", size="md", color="#8C8C8C", flex=2),
-                    TextComponent(text=account, size="md", weight="bold", color="#595959", flex=4)
+                "margin": "md"
+            },
+            {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "帳戶",
+                        "size": "md",
+                        "color": "#8C8C8C",
+                        "flex": 2
+                    },
+                    {
+                        "type": "text",
+                        "text": account,
+                        "size": "md",
+                        "weight": "bold",
+                        "color": "#595959",
+                        "flex": 4
+                    }
                 ],
-                margin="md"
-            )
+                "margin": "md"
+            }
         ]
         
         if note:
-            contents.append(
-                BoxComponent(
-                    layout="horizontal",
-                    contents=[
-                        TextComponent(text="備註", size="md", color="#8C8C8C", flex=2),
-                        TextComponent(text=note, size="md", weight="bold", color="#595959", flex=4, wrap=True)
-                    ],
-                    margin="md"
-                )
-            )
+            contents.append({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "備註",
+                        "size": "md",
+                        "color": "#8C8C8C",
+                        "flex": 2
+                    },
+                    {
+                        "type": "text",
+                        "text": note,
+                        "size": "md",
+                        "weight": "bold",
+                        "color": "#595959",
+                        "flex": 4,
+                        "wrap": True
+                    }
+                ],
+                "margin": "md"
+            })
         
         # 獲取當前台灣時間（UTC+8）
         utc_now = datetime.utcnow()
         taiwan_time = utc_now + timedelta(hours=8)
         time_str = taiwan_time.strftime("%Y-%m-%d %H:%M")
         
-        contents.append(
-            BoxComponent(
-                layout="horizontal",
-                contents=[
-                    TextComponent(text="時間", size="md", color="#8C8C8C", flex=2),
-                    TextComponent(text=time_str, size="md", weight="bold", color="#595959", flex=4)
-                ],
-                margin="md"
-            )
-        )
+        contents.append({
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "時間",
+                    "size": "md",
+                    "color": "#8C8C8C",
+                    "flex": 2
+                },
+                {
+                    "type": "text",
+                    "text": time_str,
+                    "size": "md",
+                    "weight": "bold",
+                    "color": "#595959",
+                    "flex": 4
+                }
+            ],
+            "margin": "md"
+        })
         
-        bubble = BubbleContainer(
-            header=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFE58F",  # 輔助亮黃
-                paddingAll="10px",
-                contents=[
-                    TextComponent(
-                        text="記帳成功",
-                        color="#FFFFFF",
-                        weight="bold",
-                        size="lg",
-                        align="center"
-                    )
+        bubble = {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFE58F",  # 輔助亮黃
+                "paddingAll": "10px",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "記帳成功",
+                        "color": "#FFFFFF",
+                        "weight": "bold",
+                        "size": "lg",
+                        "align": "center"
+                    }
                 ]
-            ),
-            body=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=contents
-            ),
-            footer=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",  # 淡黃背景區塊
-                contents=[
-                    BoxComponent(
-                        layout="horizontal",
-                        contents=[
-                            ButtonComponent(
-                                style="primary",
-                                color=type_color,
-                                action=PostbackAction(
-                                    label="繼續記帳",
-                                    display_text="繼續記帳",
-                                    data=f"action=main_menu"
-                                ),
-                                height="sm",
-                                flex=1
-                            ),
-                            ButtonComponent(
-                                style="secondary",
-                                color="#8C8C8C",  # 次要文字色
-                                action=MessageAction(
-                                    label="查看記錄",
-                                    text="今天"
-                                ),
-                                height="sm",
-                                flex=1,
-                                margin="md"
-                            )
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFFBE6",  # 淡黃背景區塊
+                "contents": contents
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFFBE6",  # 淡黃背景區塊
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "button",
+                                "style": "primary",
+                                "color": type_color,
+                                "action": {
+                                    "type": "postback",
+                                    "label": "繼續記帳",
+                                    "displayText": "繼續記帳",
+                                    "data": "action=main_menu"
+                                },
+                                "height": "sm",
+                                "flex": 1
+                            },
+                            {
+                                "type": "button",
+                                "style": "secondary",
+                                "color": "#8C8C8C",  # 次要文字色
+                                "action": {
+                                    "type": "message",
+                                    "label": "查看記錄",
+                                    "text": "今天"
+                                },
+                                "height": "sm",
+                                "flex": 1,
+                                "margin": "md"
+                            }
                         ]
-                    )
+                    }
                 ]
-            )
-        )
+            }
+        }
         
-        return FlexSendMessage(
-            alt_text="記帳成功",
-            contents=bubble
-        )
+        return FlexSendMessage(alt_text="記帳成功", contents=bubble)
 
     @staticmethod
     def create_transfer_menu(user_id):
@@ -1840,80 +1884,131 @@ class FlexMessageService:
             contents=bubble
         )
 
-    @staticmethod
-    def create_task_menu(user_id):
-        """創建任務管理選單"""
-        bubble = BubbleContainer(
-            header=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFC940",
-                paddingAll="10px",
-                contents=[
-                    TextComponent(
-                        text="任務管理",
-                        color="#FFFFFF",
-                        weight="bold",
-                        size="lg",
-                        align="center"
-                    )
-                ]
-            ),
-            body=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",
-                contents=[
-                    ButtonComponent(
-                        style="primary",
-                        color="#FAAD14",
-                        action=PostbackAction(
-                            label="新增任務",
-                            display_text="新增任務",
-                            data="action=create_task"
-                        ),
-                        height="sm",
-                        margin="md"
-                    ),
-                    ButtonComponent(
-                        style="secondary",
-                        color="#FFC940",
-                        action=MessageAction(
-                            label="查看任務列表",
-                            text="任務列表"
-                        ),
-                        height="sm",
-                        margin="md"
-                    ),
-                    ButtonComponent(
-                        style="secondary",
-                        color="#FFE58F",
-                        action=MessageAction(
-                            label="查看今日提醒",
-                            text="今日提醒"
-                        ),
-                        height="sm",
-                        margin="md"
-                    )
-                ]
-            ),
-            footer=BoxComponent(
-                layout="vertical",
-                backgroundColor="#FFFBE6",
-                contents=[
-                    ButtonComponent(
-                        style="secondary",
-                        color="#8C8C8C",
-                        action=PostbackAction(
-                            label="返回主選單",
-                            display_text="返回主選單",
-                            data="action=main_menu"
-                        ),
-                        height="sm"
-                    )
-                ]
-            )
-        )
+    def create_task_list(self, tasks):
+        """創建任務列表"""
+        if not tasks:
+            bubble = {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": "目前沒有任務",
+                            "weight": "bold",
+                            "size": "lg",
+                            "color": "#888888",
+                            "align": "center"
+                        }
+                    ]
+                }
+            }
+            return FlexSendMessage(alt_text="任務列表", contents=bubble)
         
-        return FlexSendMessage(
-            alt_text="任務管理選單",
-            contents=bubble
-        ) 
+        task_contents = []
+        for task in tasks:
+            status_emoji = "✅" if task.status == "completed" else "⭕"
+            task_content = {
+                "type": "box",
+                "layout": "vertical",
+                "margin": "lg",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": f"{status_emoji} {task.title}",
+                                "size": "md",
+                                "weight": "bold",
+                                "flex": 5
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            if task.description:
+                task_content["contents"].append({
+                    "type": "text",
+                    "text": task.description,
+                    "size": "sm",
+                    "color": "#888888",
+                    "wrap": True,
+                    "margin": "sm"
+                })
+            
+            if task.due_date:
+                task_content["contents"].append({
+                    "type": "text",
+                    "text": f"截止時間：{task.due_date.strftime('%Y-%m-%d %H:%M')}",
+                    "size": "xs",
+                    "color": "#AAAAAA",
+                    "margin": "sm"
+                })
+            
+            task_content["contents"].append({
+                "type": "box",
+                "layout": "horizontal",
+                "margin": "sm",
+                "contents": [
+                    {
+                        "type": "button",
+                        "style": "primary" if task.status != "completed" else "secondary",
+                        "height": "sm",
+                        "action": {
+                            "type": "postback",
+                            "label": "完成" if task.status != "completed" else "取消完成",
+                            "data": f"action=toggle_task&task_id={task.id}"
+                        },
+                        "color": "#FAAD14"
+                    },
+                    {
+                        "type": "button",
+                        "style": "secondary",
+                        "height": "sm",
+                        "margin": "sm",
+                        "action": {
+                            "type": "postback",
+                            "label": "刪除",
+                            "data": f"action=delete_task&task_id={task.id}"
+                        }
+                    }
+                ]
+            })
+            
+            task_contents.append(task_content)
+            
+            # 添加分隔線
+            if tasks.index(task) < len(tasks) - 1:
+                task_contents.append({
+                    "type": "separator",
+                    "margin": "lg"
+                })
+        
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "任務列表",
+                        "weight": "bold",
+                        "size": "xl",
+                        "color": "#555555"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "lg",
+                        "contents": task_contents
+                    }
+                ]
+            }
+        }
+        
+        return FlexSendMessage(alt_text="任務列表", contents=bubble) 
